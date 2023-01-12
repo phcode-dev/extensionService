@@ -54,20 +54,20 @@
   },
   "homepage": "https://github.com/phcode-dev/extensionService#readme",
   "devDependencies": {
-    "@commitlint/cli": "17.3.0",
-    "@commitlint/config-conventional": "17.3.0",
+    "@commitlint/cli": "17.4.2",
+    "@commitlint/config-conventional": "17.4.2",
     "c8": "7.12.0",
     "chai": "4.3.7",
     "cli-color": "2.0.3",
-    "documentation": "14.0.0",
-    "eslint": "8.29.0",
+    "documentation": "14.0.1",
+    "eslint": "8.31.0",
     "glob": "8.0.3",
-    "husky": "8.0.2",
-    "mocha": "10.1.0",
+    "husky": "8.0.3",
+    "mocha": "10.2.0",
     "nodemon" : "2.0.20"
   },
   "dependencies": {
-    "fastify": "4.10.2",
+    "fastify": "4.11.0",
     "meilisearch" : "0.30.0",
     "@aicore/libcommonutils" : "1.0.19"
   }
