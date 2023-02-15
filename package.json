@@ -1,0 +1,68 @@
+{
+  "name": "@aicore/template-nodejs",
+  "version": "1.0.8",
+  "description": "Template for nodejs with unit gulp build, test, coverage, code guardian, github and Other defaults",
+  "main": "src/index.js",
+  "type": "module",
+  "keywords": [
+    "template",
+    "nodejs",
+    "unit",
+    "testing",
+    "mocha",
+    "chai",
+    "coverage"
+  ],
+  "scripts": {
+    "eslint": "npm run lint",
+    "eslint:fix": "npm run lint:fix",
+    "lint": "eslint --quiet src test",
+    "lint:fix": "eslint --quiet --fix src test",
+    "prepare": "test -d node_modules/husky && husky install || echo \"husky is not installed\"",
+    "test": "npm run test:unit && npm run test:integ",
+    "test:unit": "APP_CONFIG=./test/unit/utils/.app.json mocha test/unit/*.spec.js test/unit/**/*.spec.js  test/unit/**/*.spec.js  test/unit/**/**/*.spec.js --timeout=3000",
+    "test:integ": "APP_CONFIG=./test/integration/.app.json mocha test/integration/*.spec.js test/integration/**/*.spec.js --timeout=3000",
+    "printReportsLink": "echo Detailed unit test coverage report: file:///$(pwd)/coverage-unit/index.html && echo Detailed integration test coverage report: file:///$(pwd)/coverage-integration/index.html",
+    "cover": "npm run cover:unit",
+    "cover:unit": "c8 -c .nycrc.unit.json npm run test:unit && npm run --silent printReportsLink",
+    "vulnerabilityCheck": "echo Scanning for npm vulnarabilities && npm audit --prod",
+    "build": "npm run cover && npm run createJSDocs && npm run vulnerabilityCheck",
+    "createJSDocs": "node build/jsDocGenerate.js src docs/generatedApiDocs && git add docs",
+    "bumpPatchVersion": "npm --no-git-tag-version version patch",
+    "bumpPatchVersionWithGitTag": "npm version patch",
+    "release": "npm run bumpPatchVersionWithGitTag",
+    "serve": "node src/index.js",
+    "serve:dev": "nodemon src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aicore/template-nodejs.git"
+  },
+  "author": "Arun, core.ai",
+  "license": "AGPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/aicore/template-nodejs/issues"
+  },
+  "homepage": "https://github.com/aicore/template-nodejs#readme",
+  "devDependencies": {
+    "@commitlint/cli": "17.3.0",
+    "@commitlint/config-conventional": "17.3.0",
+    "c8": "7.12.0",
+    "chai": "4.3.7",
+    "cli-color": "2.0.3",
+    "documentation": "14.0.1",
+    "eslint": "8.28.0",
+    "glob": "8.0.3",
+    "husky": "8.0.2",
+    "mocha": "10.1.0",
+    "nodemon": "2.0.20"
+  },
+  "dependencies": {
+    "@aicore/libcommonutils": "1.0.19",
+    "fastify": "4.12.0",
+    "node-fetch": "^3.3.0"
+  }
+}

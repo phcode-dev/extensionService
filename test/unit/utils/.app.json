@@ -1,0 +1,12 @@
+{
+  "port": 5000,
+  "authKey": "hehe",
+  "allowPublicAccess": false,
+  "mysql": {
+    "host": "localhost",
+    "port": "3306",
+    "database": "testdb",
+    "user": "root",
+    "password": "1234"
+  }
+}

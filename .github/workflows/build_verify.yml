@@ -1,0 +1,29 @@
+name: Build verification
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [ main ]
+
+jobs:
+  build-tasks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Npm Install
+        run: |
+          npm ci
+      - name: eslint using npm run eslint
+        run: |
+          npm run lint
+      - name: building build
+        run: |
+          npm run build
+      - name: Unit tests with coverage
+        run: |
+          npm run cover:unit
+      - name: Running Integration tests
+        run: |
+          npm run test:integ
