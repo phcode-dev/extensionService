@@ -1,17 +1,17 @@
 {
-  "name": "@aicore/template-nodejs",
+  "name": "@phcode/extension-service",
   "version": "1.0.8",
-  "description": "Template for nodejs with unit gulp build, test, coverage, code guardian, github and Other defaults",
+  "description": "Extension and themes management service for Phoenix/Brackets",
   "main": "src/index.js",
   "type": "module",
   "keywords": [
-    "template",
-    "nodejs",
-    "unit",
-    "testing",
-    "mocha",
-    "chai",
-    "coverage"
+    "phcode.dev",
+    "Phoneix code",
+    "extension",
+    "themes",
+    "publish",
+    "service",
+    "CI"
   ],
   "scripts": {
     "eslint": "npm run lint",
@@ -44,9 +44,9 @@
   "author": "Arun, core.ai",
   "license": "AGPL-3.0-or-later",
   "bugs": {
-    "url": "https://github.com/aicore/template-nodejs/issues"
+    "url": "https://github.com/phcode-dev/extensionService/issues"
   },
-  "homepage": "https://github.com/aicore/template-nodejs#readme",
+  "homepage": "https://github.com/phcode-dev/extensionService",
   "devDependencies": {
     "@commitlint/cli": "17.3.0",
     "@commitlint/config-conventional": "17.3.0",
