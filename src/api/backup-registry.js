@@ -2,6 +2,8 @@ import {EXTENSIONS_BUCKET, REGISTRY_FILE, REGISTRY_VERSION_FILE,
     POPULARITY_FILE, ARCHIVE_FOLDER} from "../constants.js";
 import {putObject, getObject} from "../s3.js";
 
+const ONE_DAY_IN_MS = 24*60*60*1000;
+
 // Refer https://json-schema.org/understanding-json-schema/index.html
 const schema = {
     schema: {
@@ -40,5 +42,18 @@ export async function backupRegistry() {
     } catch (e){
         console.error(e);
         throw new Error("Oops, something went wrong");
+    }
+}
+
+// Backup the registry daily to the archives folder in s3
+let dailyBackupTimer;
+export function setupTasks() {
+    dailyBackupTimer = setInterval(backupRegistry, ONE_DAY_IN_MS);
+}
+
+export function cancelTasks() {
+    if(dailyBackupTimer){
+        clearInterval(dailyBackupTimer);
+        dailyBackupTimer = null;
     }
 }

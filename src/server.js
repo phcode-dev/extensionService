@@ -18,7 +18,7 @@
 
 import db from "./db.js";
 import {setupStackForStage, getSetupStackSchema} from "./api/setup-stack.js";
-import {backupRegistry, getBackupRegistrySchema} from "./api/backup-registry.js";
+import {backupRegistry, getBackupRegistrySchema, setupTasks, cancelTasks} from "./api/backup-registry.js";
 import fastify from "fastify";
 import {init, isAuthenticated, addUnAuthenticatedAPI} from "./auth/auth.js";
 import {HTTP_STATUS_CODES} from "@aicore/libcommonutils";
@@ -78,12 +78,14 @@ server.get('/setupStack', getSetupStackSchema(), async function (request, reply)
  */
 export async function startServer() {
     await db.init(cocoEndPoint, cocoAuthKey);
+    setupTasks();
     const configs = getConfigs();
     init(configs.authKey);
     await server.listen({port: configs.port, host: configs.allowPublicAccess ? '0.0.0.0' : 'localhost'});
 }
 
 export async function close() {
+    cancelTasks();
     await db.close();
     await server.close();
 }
