@@ -23,7 +23,7 @@ export function getBackupRegistrySchema() {
 
 let date = new Date();
 export function getArchiveObjectPath(fileName) {
-    return `${ARCHIVE_FOLDER}/${date.getUTCFullYear()}/${date.getUTCMonth()}/${date.getUTCDate()}/${fileName})`;
+    return `${ARCHIVE_FOLDER}/${date.getUTCFullYear()}/${date.getUTCMonth()}/${date.getUTCDate()}/${fileName}`;
 }
 
 export async function backupRegistry() {

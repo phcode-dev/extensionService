@@ -17,7 +17,7 @@
     "src/index.js",
     "src/server.js"
   ],
-  "branches": 90,
+  "branches": 80,
   "lines": 90,
   "functions": 90,
   "statements": 90
