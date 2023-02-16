@@ -17,7 +17,6 @@ function _isBasicAuthPass(request) {
         return false;
     }
     const authHeader = request.headers.authorization;
-    console.log(authHeader);
     if (!authHeader) {
         return false;
     }

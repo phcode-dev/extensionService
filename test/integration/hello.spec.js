@@ -31,10 +31,15 @@ describe('Integration Tests for hello api', function () {
 
     it('should not say helloAuth if unauthorised', async function () {
         let output = await fetch("http://localhost:5000/helloAuth?name=world", { method: 'GET'});
-        output = await output.json();
-        expect(output).eql({
-            "error": "Unauthorized",
-            "message": "Wrong key",
-            "statusCode": 401});
+        expect(output.status).eql(401);
+        output = await output.text();
+        expect(output).eql("Unauthorized");
+    });
+
+    it('should reply 404 if route doesnt exist', async function () {
+        let output = await fetch("http://localhost:5000/routeNotExist?name=world", { method: 'GET'});
+        expect(output.status).eql(404);
+        output = await output.text();
+        expect(output).eql("Not Found");
     });
 });

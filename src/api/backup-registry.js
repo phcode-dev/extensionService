@@ -8,7 +8,7 @@ const schema = {
         response: {
             200: { //HTTP_STATUS_CODES.OK
                 type: 'object',
-                required: ['message'],
+                required: ['status'],
                 properties: {
                     status: {type: 'string'}
                 }
@@ -27,13 +27,18 @@ export function getArchiveObjectPath(fileName) {
 }
 
 export async function backupRegistry() {
-    let contents = await getObject(EXTENSIONS_BUCKET, REGISTRY_FILE);
-    await putObject(EXTENSIONS_BUCKET, getArchiveObjectPath(REGISTRY_FILE), contents);
-    contents = await getObject(EXTENSIONS_BUCKET, REGISTRY_VERSION_FILE);
-    await putObject(EXTENSIONS_BUCKET, getArchiveObjectPath(REGISTRY_VERSION_FILE), contents);
-    contents = await getObject(EXTENSIONS_BUCKET, POPULARITY_FILE);
-    await putObject(EXTENSIONS_BUCKET, getArchiveObjectPath(POPULARITY_FILE), contents);
-    return {
-        status: "done"
-    };
+    try {
+        let contents = await getObject(EXTENSIONS_BUCKET, REGISTRY_FILE);
+        await putObject(EXTENSIONS_BUCKET, getArchiveObjectPath(REGISTRY_FILE), contents);
+        contents = await getObject(EXTENSIONS_BUCKET, REGISTRY_VERSION_FILE);
+        await putObject(EXTENSIONS_BUCKET, getArchiveObjectPath(REGISTRY_VERSION_FILE), contents);
+        contents = await getObject(EXTENSIONS_BUCKET, POPULARITY_FILE);
+        await putObject(EXTENSIONS_BUCKET, getArchiveObjectPath(POPULARITY_FILE), contents);
+        return {
+            status: "done"
+        };
+    } catch (e){
+        console.error(e);
+        throw new Error("Oops, something went wrong");
+    }
 }

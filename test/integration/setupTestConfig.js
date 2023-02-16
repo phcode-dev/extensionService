@@ -8,7 +8,9 @@ const defaultTestConfig = {
     "allowPublicAccess": false,
     "cocoEndPoint": "Provide coco endpoint in testConfig.json file to run integ tests",
     "cocoAuthKey": "update in testConfig.json file to run integ tests",
-    "stage": "can be dev/prod . update in testConfig.json"
+    "stage": "can be dev/prod . update in testConfig.json",
+    "accessKeyId": "update in testConfig.json file to run integ tests",
+    "secretAccessKey": "update in testConfig.json file to run integ tests"
 };
 
 
