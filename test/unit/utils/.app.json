@@ -2,6 +2,9 @@
   "port": 5000,
   "authKey": "hehe",
   "allowPublicAccess": false,
+  "cocoEndPoint": "https://cocoEndPoint",
+  "cocoAuthKey": "cocoAuthKey",
+  "stage": "test",
   "mysql": {
     "host": "localhost",
     "port": "3306",

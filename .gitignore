@@ -9,6 +9,7 @@ lerna-debug.log*
 # config files
 src/.app.json
 src/app.json
+src/testConfig.json
 
 # IDE exclusions
 .idea

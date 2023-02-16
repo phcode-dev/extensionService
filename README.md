@@ -1,4 +1,5 @@
-# template-nodejs
+# Extension Service
+Handles Phoenix/Brackets extensions and themes management including publishing, popularity tracking, CI integrations(Eg. from GitHub actions etc..). 
 
 ```shell
 # do this to start server
@@ -17,11 +18,6 @@ curl -X GET 'http://127.0.0.1:5000/hello?name=rambo'  -H 'authorization: Basic 1
 npm run serve:dev
 ```
 
-A template project for nodejs. Has integrated linting, testing,
-coverage, reporting, GitHub actions for publishing to npm repository, dependency updates and other goodies.
-
-Easily use this template to quick start a production ready nodejs project template.
-
 ## Code Guardian
 
 [![<app> build verification](https://github.com/phcode-dev/extensionService/actions/workflows/build_verify.yml/badge.svg)](https://github.com/phcode-dev/extensionService/actions/workflows/build_verify.yml)
@@ -37,22 +33,6 @@ Easily use this template to quick start a production ready nodejs project templa
   <img src="https://sonarcloud.io/api/project_badges/measure?project=phcode-dev_extensionService2&metric=ncloc" alt="Lines of Code" />
   <img src="https://sonarcloud.io/api/project_badges/measure?project=phcode-dev_extensionService2&metric=sqale_index" alt="Technical debt" />
 </a>
-
-# TODOs after template use
-
-## !!!Please see all issues in the generated repository as an issue will be generated tracking the fix of each of the below items.
-
-1. Update package.json with your app defaults
-2. Check Build actions on pull requests.
-3. create a home page in wiki by going to wiki link https://github.com/<your_org>/<your_repo>/wiki
-4. Goto github `repository` > `settings`> and uncheck `Allow merge commits`. this is usually automatically done by code
-   guardian bots in core.ai org. so you may just need to verify it.
-5. In sonar cloud, enable Automatic analysis from `Administration
-   Analysis Method` for the first time before a pull request is
-   raised: ![image](https://user-images.githubusercontent.com/5336369/148695840-65585d04-5e59-450b-8794-54ca3c62b9fe.png)
-6. Check codacy runs on pull requests, set codacy defaults. You may remove codacy if sonar cloud is only needed.
-7. Update the above Code Guardian badges; change all `id=phcode-dev_extensionService2` to the sonar id of your project
-   fields. see this PR: https://github.com/aicore/libcache/pull/13
 
 # Commands available
 
@@ -81,6 +61,28 @@ To Automatically fix lint errors:
 
 ## Testing
 
+### Run unit tests
+```shell
+> npm run test:unit
+```
+
+### Running integration tests locally
+
+```shell
+> npm run test:integ
+```
+You can edit `src/testConfig.json` to change app config for tests after running the above command.
+
+### Running integration tests in GitHub actions
+You have to set a repository secret `APP_CONFIG_FOR_INTEG_TESTS` with
+content of the text config.
+* Goto your repository settings https://github.com/<your org>/<your repo>/settings/secrets/actions
+* Create a new `Repository secret` with name `APP_CONFIG_FOR_INTEG_TESTS` and the secret as the config file contents.
+* The build verify action should now be able to use the secret.
+* Note that pull requests cannot read repository secrets and subsequently cannot run integration tests.
+
+### To run all tests:
+
 To run all tests:
 
 ```shell
@@ -89,13 +91,6 @@ To run all tests:
     ✔ should return Hello World
     #indexOf()
       ✔ should return -1 when the value is not present
-```
-
-Additionally, to run unit/integration tests only, use the commands:
-
-```shell
-> npm run test:unit
-> npm run test:integ
 ```
 
 ## Coverage Reports
