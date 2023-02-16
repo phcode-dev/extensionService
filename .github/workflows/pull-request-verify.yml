@@ -1,7 +1,7 @@
-name: Build verification on push to main branch
+name: Build verification on pull request
 
 on:
-  push:
+  pull_request:
     branches: [ main ]
 
 jobs:
@@ -21,8 +21,3 @@ jobs:
       - name: Unit tests with coverage
         run: |
           npm run cover:unit
-      - name: Running Integration tests
-        env:
-          APP_CONFIG_FOR_INTEG_TESTS: ${{ secrets.APP_CONFIG_FOR_INTEG_TESTS || '' }}
-        run: |
-          npm run test:integ

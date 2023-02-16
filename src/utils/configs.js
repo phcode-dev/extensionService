@@ -2,11 +2,26 @@ import * as fs from "fs";
 
 let APP_CONFIG = null;
 
+function _checkRequiredConfigs(config) {
+    const requiredEnvVars = ["cocoEndPoint", "cocoAuthKey", "stage"];
+    let missingEnvVars = [];
+    for (let envName of requiredEnvVars){
+        if(!config[envName]){
+            missingEnvVars.push(envName);
+        }
+    }
+    if(missingEnvVars.length > 0){
+        console.error("Required Environmental variable missing: ", missingEnvVars);
+        throw new Error("Required Environmental variable missing: " + missingEnvVars);
+    }
+}
+
 function _getValidatedConfig(configText) {
     let config = JSON.parse(configText);
     if(typeof config.port !== 'number'){
         throw new Error("Invalid port(expected number) in config " + config.port);
     }
+    _checkRequiredConfigs(config);
     console.log("using port: ", config.port);
     return config;
 }
