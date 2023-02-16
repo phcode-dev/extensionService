@@ -2,4 +2,4 @@
 src/thirdparty/**
 src/**/*-min.js
 src/**/*.min.js
-
+test/unit/data/**
