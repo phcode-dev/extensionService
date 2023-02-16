@@ -1,4 +1,5 @@
 import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import {accessKeyId, secretAccessKey} from "./constants.js";
 
 export const s3 = {
     S3Client,
@@ -12,7 +13,13 @@ function _initClient() {
     if(client){
         return;
     }
-    client = new s3.S3Client({ region: "us-east-1" });
+    client = new s3.S3Client({
+        region: "us-east-1",
+        credentials: {
+            accessKeyId,
+            secretAccessKey
+        }
+    });
 }
 
 export function getObject (Bucket, Key) {

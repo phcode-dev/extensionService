@@ -32,7 +32,7 @@
     "bumpPatchVersion": "npm --no-git-tag-version version patch",
     "bumpPatchVersionWithGitTag": "npm version patch",
     "release": "npm run bumpPatchVersionWithGitTag",
-    "serve": "node src/index.js",
+    "serve": "APP_CONFIG=./src/app.json node src/index.js",
     "serve:dev": "nodemon src/index.js"
   },
   "files": [

@@ -1,6 +1,8 @@
 import {getConfigs} from './utils/configs.js';
 
 export const stage = getConfigs().stage;
+export const accessKeyId = getConfigs().accessKeyId;
+export const secretAccessKey = getConfigs().secretAccessKey;
 export const cocoEndPoint = getConfigs().cocoEndPoint;
 export const cocoAuthKey = getConfigs().cocoAuthKey;
 export const DATABASE_NAME = `phcode_extensions_${stage}`;

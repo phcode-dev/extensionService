@@ -9,7 +9,7 @@ const schema = {
         response: {
             200: { //HTTP_STATUS_CODES.OK
                 type: 'object',
-                required: ['message'],
+                required: ['status'],
                 properties: {
                     status: {type: 'string'}
                 }
@@ -65,18 +65,23 @@ async function _putDataInTable(allExtensionData, tableName) {
 }
 
 export async function setupStackForStage() {
-    console.log("creating stack", DATABASE_NAME);
-    console.log("creating db ", await db.createDb(DATABASE_NAME));
-    // EXTENSIONS_DETAILS_TABLE
-    console.log("creating table ", await db.createTable(EXTENSIONS_DETAILS_TABLE));
-    console.log("creating table ", await db.createIndex(EXTENSIONS_DETAILS_TABLE, FIELD_EXTENSION_ID, FIELD_TYPE,
-        true, true));
-    console.log("reading registry file");
-    let registry = JSON.parse(await getObject(EXTENSIONS_BUCKET, REGISTRY_FILE));
-    console.log("updating tables with registry");
-    await _putDataInTable(registry, EXTENSIONS_DETAILS_TABLE);
-    console.log("done");
-    return {
-        status: "done"
-    };
+    try{
+        console.log("creating stack", DATABASE_NAME);
+        console.log("creating db ", await db.createDb(DATABASE_NAME));
+        // EXTENSIONS_DETAILS_TABLE
+        console.log("creating table ", await db.createTable(EXTENSIONS_DETAILS_TABLE));
+        console.log("creating table ", await db.createIndex(EXTENSIONS_DETAILS_TABLE, FIELD_EXTENSION_ID, FIELD_TYPE,
+            true, true));
+        console.log("reading registry file");
+        let registry = JSON.parse(await getObject(EXTENSIONS_BUCKET, REGISTRY_FILE));
+        console.log("updating tables with registry");
+        await _putDataInTable(registry, EXTENSIONS_DETAILS_TABLE);
+        console.log("done");
+        return {
+            status: "done"
+        };
+    } catch (e){
+        console.error(e);
+        throw new Error("Oops, something went wrong");
+    }
 }
