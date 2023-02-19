@@ -42,4 +42,20 @@ describe('Integration Tests for hello api', function () {
         output = await output.text();
         expect(output).eql("Not Found");
     });
+
+    it('should get static web page', async function () {
+        let output = await fetch("http://localhost:5000/www", { method: 'GET'});
+        expect(output.status).eql(200);
+        output = await output.text();
+        expect(output.includes("Hello HTML")).eql(true);
+        output = await fetch("http://localhost:5000/www/", { method: 'GET'});
+        expect(output.status).eql(200);
+        output = await output.text();
+        expect(output.includes("Hello HTML")).eql(true);
+    });
+
+    it('should get 404 if static web page doesnt exist', async function () {
+        let output = await fetch("http://localhost:5000/www/noop", { method: 'GET'});
+        expect(output.status).eql(404);
+    });
 });

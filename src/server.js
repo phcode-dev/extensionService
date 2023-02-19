@@ -20,11 +20,16 @@ import db from "./db.js";
 import {setupStackForStage, getSetupStackSchema} from "./api/setup-stack.js";
 import {backupRegistry, getBackupRegistrySchema, setupTasks, cancelTasks} from "./api/backup-registry.js";
 import fastify from "fastify";
+import {fastifyStatic} from "@fastify/static";
 import {init, isAuthenticated, addUnAuthenticatedAPI} from "./auth/auth.js";
 import {HTTP_STATUS_CODES} from "@aicore/libcommonutils";
 import {getConfigs} from "./utils/configs.js";
 import {cocoEndPoint, cocoAuthKey} from "./constants.js";
 import {getHelloSchema, hello} from "./api/hello.js";
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const server = fastify({
     logger: true,
@@ -32,6 +37,7 @@ const server = fastify({
     // needed to forward correct IP addresses in a reverse proxy configuration
     trustProxy: true
 });
+
 /* Adding an authentication hook to the server. A hook is a function that is called when a request is made to
 the server. */
 server.addHook('onRequest', (request, reply, done) => {
@@ -52,6 +58,20 @@ server.addHook('onRequest', (request, reply, done) => {
     } else {
         done();
     }
+});
+
+
+// static web pages
+console.log("Serving static files from path: ", __dirname + '/www/');
+addUnAuthenticatedAPI('/www/*');
+server.register(fastifyStatic, {
+    root: __dirname + '/www/',
+    prefix: '/www/'
+});
+addUnAuthenticatedAPI('/www');
+server.get('/www', function(req, res){
+    // redirect www to www/
+    res.redirect(301, req.url + '/');
 });
 
 // public hello api
@@ -77,7 +97,9 @@ server.get('/setupStack', getSetupStackSchema(), async function (request, reply)
  * It starts the server and listens on the port specified in the configs
  */
 export async function startServer() {
+    console.log("awaiting connection to coco db");
     await db.init(cocoEndPoint, cocoAuthKey);
+    console.log("connected to coco db");
     setupTasks();
     const configs = getConfigs();
     init(configs.authKey);

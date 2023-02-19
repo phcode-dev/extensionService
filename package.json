@@ -62,10 +62,11 @@
     "nodemon": "2.0.20"
   },
   "dependencies": {
+    "@aicore/cocodb-ws-client": "^1.0.13",
     "@aicore/libcommonutils": "1.0.19",
+    "@aws-sdk/client-s3": "^3.264.0",
+    "@fastify/static": "^6.9.0",
     "fastify": "4.12.0",
-    "node-fetch": "^3.3.0",
-    "@aicore/cocodb-ws-client": "^1.0.10",
-    "@aws-sdk/client-s3": "^3.264.0"
+    "node-fetch": "^3.3.0"
   }
 }

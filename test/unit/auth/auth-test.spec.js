@@ -94,36 +94,51 @@ describe('unit tests for auth module', function () {
         expect(authenticated).eql(false);
     });
 
-    it('addUnAuthenticatedAPI should disable authentication for given api', function () {
-        init(getConfigs().authKey);
-        addUnAuthenticatedAPI("/testAPI01");
+    function _verifyAuthenticated(url, expectedAuthenticated) {
         const authenticated = isAuthenticated({
             headers: {
                 abc: '123'
             }, raw: {
-                url: "/testAPI01#43?z=34"
+                url
             }
-
         }, {});
-        expect(authenticated).eql(true);
+        expect(authenticated).eql(expectedAuthenticated);
+    }
+
+    it('addUnAuthenticatedAPI should disable authentication for given api', function () {
+        init(getConfigs().authKey);
+        addUnAuthenticatedAPI("/testAPI01");
+        _verifyAuthenticated("/testAPI01#43?z=34", true);
+    });
+
+    it('addUnAuthenticatedAPI should disable authentication for given api prefix', function () {
+        init(getConfigs().authKey);
+        addUnAuthenticatedAPI("/testAPI02/*");
+        _verifyAuthenticated("/testAPI02/#43?z=34", true);
+        _verifyAuthenticated("/testAPI02/x#43?z=34", true);
+        _verifyAuthenticated("/testAPI02/x/y#43?z=34", true);
+        _verifyAuthenticated("/testAPI02/index.html", true);
+        addUnAuthenticatedAPI("/testAPI03*");
+        _verifyAuthenticated("/testAPI03#43?z=34", true);
+        _verifyAuthenticated("/testAPI03/#43?z=34", true);
+        _verifyAuthenticated("/testAPI03hello/y/index.html#43?z=34", true);
+    });
+
+    it('addUnAuthenticatedAPI should not disable authentication for given api prefix not match', function () {
+        init(getConfigs().authKey);
+        addUnAuthenticatedAPI("/testAPI04/*");
+        _verifyAuthenticated("/testAPI04#43?z=34", false);
+        _verifyAuthenticated("/testAPI04d/#43?z=34", false);
     });
 
     it('addUnAuthenticatedAPI should not disable authentication if api signature mismatch with /', function () {
         addUnAuthenticatedAPI("/testAPI01");
-        const authenticated = isAuthenticated({
-            headers: {
-                abc: '123'
-            }, raw: {
-                url: "/testAPI01/#43?z=34" // note the / at the end of url
-            }
-
-        }, {});
-        expect(authenticated).eql(false);
+        _verifyAuthenticated("/testAPI01/#43?z=34", false);  // note the / at the end of url
     });
 
-    it('addCustomAuthorizer should be called for given api', function () {
+    function _verifyCustomAuthorizerCalled(addCustomAuthURL, urlToTest) {
         let customAuthRequest;
-        addCustomAuthorizer("/testAPI01", (request)=>{
+        addCustomAuthorizer(addCustomAuthURL, (request)=>{
             customAuthRequest = request;
             return false;
         });
@@ -132,12 +147,21 @@ describe('unit tests for auth module', function () {
                 abc: '123',
                 auth: 'custom'
             }, raw: {
-                url: "/testAPI01#43?z=34"
+                url: urlToTest
             }
 
         }, {});
         expect(authenticated).eql(false);
         expect(customAuthRequest.headers.auth).eql('custom');
+    }
+
+    it('addCustomAuthorizer should be called for given api', function () {
+        _verifyCustomAuthorizerCalled("/testAPI01", "/testAPI01#43?z=34");
+    });
+
+    it('addCustomAuthorizer should be called for given api prefix', function () {
+        _verifyCustomAuthorizerCalled("/testAPICustom/*", "/testAPICustom/x#43?z=34");
+        _verifyCustomAuthorizerCalled("/testAPICustom2*", "/testAPICustom2index/x#43?z=34");
     });
 
 });
