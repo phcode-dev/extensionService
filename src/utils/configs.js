@@ -3,16 +3,16 @@ import * as fs from "fs";
 let APP_CONFIG = null;
 
 function _checkRequiredConfigs(config) {
-    const requiredEnvVars = ["cocoEndPoint", "cocoAuthKey", "stage"];
+    const requiredConfigVars = ["cocoEndPoint", "cocoAuthKey", "stage", "githubAPIToken"];
     let missingEnvVars = [];
-    for (let envName of requiredEnvVars){
+    for (let envName of requiredConfigVars){
         if(!config[envName]){
             missingEnvVars.push(envName);
         }
     }
     if(missingEnvVars.length > 0){
-        console.error("Required Environmental variable missing: ", missingEnvVars);
-        throw new Error("Required Environmental variable missing: " + missingEnvVars);
+        console.error("Required AppConfig variable missing: ", missingEnvVars);
+        throw new Error("Required AppConfig variable missing: " + missingEnvVars);
     }
 }
 

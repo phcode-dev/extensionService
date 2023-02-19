@@ -1,7 +1,7 @@
 /*global describe, it*/
 import {setS3Mock} from "../setupMocks.js";
 import * as chai from 'chai';
-import {setupStackForStage} from "../../../src/api/setup-stack.js";
+import {setupStackForStage, getSetupStackSchema} from "../../../src/api/setup-stack.js";
 import db from "../../../src/db.js";
 import {default as registry} from "../data/registry.js";
 
@@ -11,6 +11,7 @@ const bucket = "phcode-extensions-test";
 describe('unit Tests for setupStack api', function () {
 
     it('should setupStackForStage', async function() {
+        getSetupStackSchema();
         setS3Mock(bucket, "registry.json", JSON.stringify(registry));
         let createDbParam = "";
         db.createDb = function (dbName) {
