@@ -1,13 +1,15 @@
 import * as chai from 'chai';
 import db from "../../src/db.js";
 import {s3} from "../../src/s3.js";
+import {_gitHub} from "../../src/github.js";
 
 let expect = chai.expect;
 
 let setupDone = false;
 let mockedFunctions = {
     db,
-    s3MockedKeyValues:{}
+    s3MockedKeyValues:{},
+    githubRequestFnMock: function () {}
 };
 
 const MOCKED_ENV_VAR = "mocked_env_var";
@@ -75,6 +77,16 @@ function _setup() {
 
     s3.PutObjectCommand = function ({ Bucket, Key, Body }){
         return { Bucket, Key, type: "put", thingToPut: Body};
+    };
+
+    _gitHub.Octokit = class Octokit{
+        constructor(param) {
+            expect(param.auth).eq("githubToken");
+            expect(param.userAgent).eq("phcode.dev extensions service");
+        }
+        async request(...args){
+            return mockedFunctions.githubRequestFnMock(...args);
+        }
     };
 }
 
