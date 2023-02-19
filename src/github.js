@@ -49,3 +49,27 @@ export async function createIssue(owner, repo, title, body) {
         html_url: response.data.html_url
     };
 }
+
+/**
+ * Creates a new issue.
+ * @param {string} owner
+ * @param {string} repo
+ * @param {string|number} issueNumber
+ * @param {string} commentString
+ * @return {Promise<{number:number, html_url:string}>}
+ */
+export async function commentOnIssue(owner, repo, issueNumber, commentString) {
+    // https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue
+    // {... "html_url": "https://github.com/octocat/Hello-World/issues/1347", ...}
+    let response = await octokit.request(`POST /repos/${owner}/${repo}/issues/${issueNumber}/comments`, {
+        owner,
+        repo,
+        issue_number: `${issueNumber}`,
+        body: commentString
+    });
+
+    console.log("commented on issue: ", response.data.html_url);
+    return {
+        html_url: response.data.html_url
+    };
+}
