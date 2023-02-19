@@ -25,11 +25,27 @@ export function initClient() {
     });
 }
 
+/**
+ * Creates a new issue.
+ * @param {string} owner
+ * @param {string} repo
+ * @param {string} title
+ * @param {string} body
+ * @return {Promise<{number:number, html_url:string}>}
+ */
 export async function createIssue(owner, repo, title, body) {
-    return await octokit.request(`POST /repos/${owner}/${repo}/issues`, {
+    // https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue
+    // {... "html_url": "https://github.com/octocat/Hello-World/issues/1347", ...}
+    let response = await octokit.request(`POST /repos/${owner}/${repo}/issues`, {
         owner,
         repo,
         title,
         body
     });
+
+    console.log("created issue: ", response.data.html_url);
+    return {
+        number: response.data.number,
+        html_url: response.data.html_url
+    };
 }
