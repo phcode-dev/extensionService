@@ -18,7 +18,7 @@ import * as chai from 'chai';
 let expect = chai.expect;
 
 describe('github mock Tests', function() {
-    let url, options;
+    let url, options, githubResponse;
 
     before(function () {
         initClient();
@@ -28,20 +28,22 @@ describe('github mock Tests', function() {
         mockedFunctions.githubRequestFnMock = function (_url, _options) {
             url = _url;
             options = _options;
+            return githubResponse;
         };
     });
 
     it('should createIssue', async function() {
-        let err = false;
-        try{
-            await createIssue("own", "repo", "title", "message");
-        } catch (e) {
-            console.error(e);
-            err = e;
-        }
-        expect(err).to.equal(false);
+        let data = {
+            number: 1,
+            html_url: "url"
+        };
+        githubResponse = {
+            data
+        };
+        let response = await createIssue("own", "repo", "title", "message");
         expect(url).to.equal("POST /repos/own/repo/issues");
         expect(options.title).to.equal("title");
         expect(options.body).to.equal("message");
+        expect(response).to.eql(data);
     });
 });
