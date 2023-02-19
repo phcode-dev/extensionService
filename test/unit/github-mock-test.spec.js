@@ -12,7 +12,7 @@
 /*global describe, it, beforeEach, before*/
 
 import mockedFunctions from "./setupMocks.js";
-import {createIssue, initClient} from "../../src/github.js";
+import {createIssue, commentOnIssue, initClient} from "../../src/github.js";
 import * as chai from 'chai';
 
 let expect = chai.expect;
@@ -43,6 +43,19 @@ describe('github mock Tests', function() {
         let response = await createIssue("own", "repo", "title", "message");
         expect(url).to.equal("POST /repos/own/repo/issues");
         expect(options.title).to.equal("title");
+        expect(options.body).to.equal("message");
+        expect(response).to.eql(data);
+    });
+
+    it('should comment on issue', async function() {
+        let data = {
+            html_url: "url"
+        };
+        githubResponse = {
+            data
+        };
+        let response = await commentOnIssue("own", "repo", 1, "message");
+        expect(url).to.equal("POST /repos/own/repo/issues/1/comments");
         expect(options.body).to.equal("message");
         expect(response).to.eql(data);
     });
