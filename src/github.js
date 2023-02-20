@@ -75,7 +75,8 @@ export async function commentOnIssue(owner, repo, issueNumber, commentString) {
 }
 
 /**
- * Get the org details or null if org doesn't exist
+ * Get the org details
+ * or null if org doesn't exist/ it is just a plain user and not an org.
  * @param {string} org
  * @return {Promise<{is_verified:boolean, html_url:string, blog:string,
  * name:string, company:string}> | null} blog is the verified url for the org. null if org doesnt exist
@@ -105,6 +106,39 @@ export async function getOrgDetails(org) {
             return null;
         }
         console.error("error getting github org: ", e);
+        throw e;
+    }
+}
+
+/**
+ * Get the repo details
+ * or null if repo doesn't exist.
+ * @param {string} owner
+ * @param {string} repo
+ * @return {Promise<{html_url:string, stargazers_count:number}> | null}
+ */
+export async function getRepoDetails(owner, repo) {
+    // https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue
+    // {... "html_url": "https://github.com/octocat/Hello-World/issues/1347", ...}
+    console.log("Get Repo details: ", arguments);
+    try{
+        let response = await octokit.request(`GET /repos/${owner}/${repo}`, {
+            owner, repo
+        });
+
+        let repoDetails = {
+            html_url: response.data.html_url,
+            stargazers_count: response.data.stargazers_count
+        };
+
+        console.log("GitHub repo details: ", repoDetails);
+        return repoDetails;
+    } catch (e) {
+        if(e.status === 404){
+            console.log("no such repo: ", owner, repo);
+            return null;
+        }
+        console.error("error getting github repo: ", e);
         throw e;
     }
 }
