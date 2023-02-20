@@ -76,4 +76,27 @@ describe('github mock Tests', function() {
         expect(options.org).to.equal("org");
         expect(response).to.eql(data);
     });
+
+    it('should return null if org doesnt exist', async function() {
+        mockedFunctions.githubRequestFnMock = function () {
+            throw {
+                status: 404
+            };
+        };
+        let response = await getOrgDetails("org");
+        expect(response).to.be.null;
+    });
+
+    it('should throw if throws with any other error than 404', async function() {
+        mockedFunctions.githubRequestFnMock = function () {
+            throw {status: 500};
+        };
+        let errored = false;
+        try{
+            await getOrgDetails("org");
+        } catch(e){
+            errored = true;
+        }
+        expect(errored).to.be.true;
+    });
 });
