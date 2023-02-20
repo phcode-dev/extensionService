@@ -28,6 +28,8 @@ import {cocoEndPoint, cocoAuthKey} from "./constants.js";
 import {getHelloSchema, hello} from "./api/hello.js";
 import path from 'path';
 import { fileURLToPath } from 'url';
+import {initGitHubClient} from "./github.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -99,6 +101,7 @@ server.get('/setupStack', getSetupStackSchema(), async function (request, reply)
 export async function startServer() {
     console.log("awaiting connection to coco db");
     await db.init(cocoEndPoint, cocoAuthKey);
+    initGitHubClient();
     console.log("connected to coco db");
     setupTasks();
     const configs = getConfigs();
