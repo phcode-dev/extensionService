@@ -60,6 +60,7 @@ export async function createIssue(owner, repo, title, body) {
  * @return {Promise<{html_url:string}>}
  */
 export async function commentOnIssue(owner, repo, issueNumber, commentString) {
+    // https://docs.github.com/en/rest/issues/comments?apiVersion=2022-11-28
     console.log("Comment on Github issue: ", arguments);
     let response = await octokit.request(`POST /repos/${owner}/${repo}/issues/${issueNumber}/comments`, {
         owner,
@@ -82,8 +83,7 @@ export async function commentOnIssue(owner, repo, issueNumber, commentString) {
  * name:string, company:string}> | null} blog is the verified url for the org. null if org doesnt exist
  */
 export async function getOrgDetails(org) {
-    // https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue
-    // {... "html_url": "https://github.com/octocat/Hello-World/issues/1347", ...}
+    // https://docs.github.com/en/rest/orgs/orgs?apiVersion=2022-11-28#get-an-organization
     console.log("Get Org details: ", arguments);
     try{
         let response = await octokit.request(`GET /orgs/${org}`, {
@@ -118,8 +118,7 @@ export async function getOrgDetails(org) {
  * @return {Promise<{html_url:string, stargazers_count:number}> | null}
  */
 export async function getRepoDetails(owner, repo) {
-    // https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue
-    // {... "html_url": "https://github.com/octocat/Hello-World/issues/1347", ...}
+    // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#get-a-repository
     console.log("Get Repo details: ", arguments);
     try{
         let response = await octokit.request(`GET /repos/${owner}/${repo}`, {
@@ -139,6 +138,50 @@ export async function getRepoDetails(owner, repo) {
             return null;
         }
         console.error("error getting github repo: ", e);
+        throw e;
+    }
+}
+
+/**
+ * Get the release details
+ * or null if release doesn't exist.
+ * @param {string} owner
+ * @param {string} repo
+ * @param {string} tag
+ * @return {Promise<{html_url:string, stargazers_count:number}> | null}
+ */
+export async function getReleaseDetails(owner, repo, tag) {
+    // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#get-a-repository
+    console.log("Get Release details: ", arguments);
+    try{
+        let response = await octokit.request(`GET /repos/${owner}/${repo}/releases/tags/${tag}`, {
+            owner, repo, tag
+        });
+
+        let releaseDetails = {
+            html_url: response.data.html_url,
+            draft: response.data.draft,
+            prerelease: response.data.prerelease,
+            assets: []
+        };
+        for(let asset of response.data.assets){
+            releaseDetails.assets.push({
+                //Eg. "https://github.com/octocat/Hello-World/releases/download/v1.0.0/example.zip",
+                browser_download_url: asset.browser_download_url,
+                name: asset.name, //"example.zip",
+                size: asset.size, // 1024
+                content_type: asset.content_type // Eg. application/zip
+            });
+        }
+
+        console.log("GitHub release details: ", releaseDetails);
+        return releaseDetails;
+    } catch (e) {
+        if(e.status === 404){
+            console.log("no such release: ", owner, repo);
+            return null;
+        }
+        console.error("error getting github release: ", e);
         throw e;
     }
 }

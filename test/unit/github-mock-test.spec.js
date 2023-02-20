@@ -13,7 +13,7 @@
 
 import mockedFunctions from "./setupMocks.js";
 import {createIssue, commentOnIssue, initGitHubClient, getOrgDetails,
-getRepoDetails} from "../../src/github.js";
+getRepoDetails, getReleaseDetails} from "../../src/github.js";
 import * as chai from 'chai';
 
 let expect = chai.expect;
@@ -133,6 +133,54 @@ describe('github mock Tests', function() {
         let errored = false;
         try{
             await getRepoDetails("org", "repo");
+        } catch(e){
+            errored = true;
+        }
+        expect(errored).to.be.true;
+    });
+
+    it('should get release details', async function() {
+        let data =  {
+            html_url: 'https://github.com/tt/wer/releases/tag/dfg',
+            draft: false,
+            prerelease: false,
+            assets: [
+                {
+                    browser_download_url:
+                        'https://github.com/tt/wer/releases/download/dfg/42yeah.aliasing-1.0.0.zip',
+                    name: '42yeah.aliasing-1.0.0.zip',
+                    size: 718,
+                    content_type: 'application/x-zip-compressed'
+                }
+            ]
+        };
+        githubResponse = {
+            data
+        };
+        let response = await getReleaseDetails("org", "repo", "releaseRef");
+        expect(url).to.equal("GET /repos/org/repo/releases/tags/releaseRef");
+        expect(options.owner).to.equal("org");
+        expect(options.repo).to.equal("repo");
+        expect(response).to.eql(data);
+    });
+
+    it('should return null if release doesnt exist', async function() {
+        mockedFunctions.githubRequestFnMock = function () {
+            throw {
+                status: 404
+            };
+        };
+        let response = await getReleaseDetails("org", "repo", "releaseRef");
+        expect(response).to.be.null;
+    });
+
+    it('should getReleaseDetails throw if throws with any other error than 404', async function() {
+        mockedFunctions.githubRequestFnMock = function () {
+            throw {status: 500};
+        };
+        let errored = false;
+        try{
+            await getReleaseDetails("org", "repo", "releaseRef");
         } catch(e){
             errored = true;
         }
