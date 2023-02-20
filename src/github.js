@@ -148,7 +148,8 @@ export async function getRepoDetails(owner, repo) {
  * @param {string} owner
  * @param {string} repo
  * @param {string} tag
- * @return {Promise<{html_url:string, stargazers_count:number}> | null}
+ * @return {Promise<{html_url:string, draft:boolean, prerelease:boolean,
+ * assets:Array<{browser_download_url:string, name:string, size: number, content_type:string}>}> | null}
  */
 export async function getReleaseDetails(owner, repo, tag) {
     // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#get-a-repository
