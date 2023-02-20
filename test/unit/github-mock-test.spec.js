@@ -12,7 +12,8 @@
 /*global describe, it, beforeEach, before*/
 
 import mockedFunctions from "./setupMocks.js";
-import {createIssue, commentOnIssue, initGitHubClient, getOrgDetails} from "../../src/github.js";
+import {createIssue, commentOnIssue, initGitHubClient, getOrgDetails,
+getRepoDetails} from "../../src/github.js";
 import * as chai from 'chai';
 
 let expect = chai.expect;
@@ -94,6 +95,44 @@ describe('github mock Tests', function() {
         let errored = false;
         try{
             await getOrgDetails("org");
+        } catch(e){
+            errored = true;
+        }
+        expect(errored).to.be.true;
+    });
+
+    it('should get repo details', async function() {
+        let data = {
+            stargazers_count: 3,
+            html_url: 'https://github.com/phcode-dev'
+        };
+        githubResponse = {
+            data
+        };
+        let response = await getRepoDetails("org", "repo");
+        expect(url).to.equal("GET /repos/org/repo");
+        expect(options.owner).to.equal("org");
+        expect(options.repo).to.equal("repo");
+        expect(response).to.eql(data);
+    });
+
+    it('should return null if repo doesnt exist', async function() {
+        mockedFunctions.githubRequestFnMock = function () {
+            throw {
+                status: 404
+            };
+        };
+        let response = await getRepoDetails("org", "repo");
+        expect(response).to.be.null;
+    });
+
+    it('should getRepoDetails throw if throws with any other error than 404', async function() {
+        mockedFunctions.githubRequestFnMock = function () {
+            throw {status: 500};
+        };
+        let errored = false;
+        try{
+            await getRepoDetails("org", "repo");
         } catch(e){
             errored = true;
         }
