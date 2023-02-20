@@ -8,7 +8,7 @@ export const _gitHub = {
 
 let octokit;
 
-export function initClient() {
+export function initGitHubClient() {
     if(octokit){
         console.warn("GitHub Client already initialized.");
         return;
@@ -51,12 +51,12 @@ export async function createIssue(owner, repo, title, body) {
 }
 
 /**
- * Creates a new issue.
+ * comments on an issue
  * @param {string} owner
  * @param {string} repo
  * @param {string|number} issueNumber
  * @param {string} commentString
- * @return {Promise<{number:number, html_url:string}>}
+ * @return {Promise<{html_url:string}>}
  */
 export async function commentOnIssue(owner, repo, issueNumber, commentString) {
     // https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue
@@ -72,4 +72,29 @@ export async function commentOnIssue(owner, repo, issueNumber, commentString) {
     return {
         html_url: response.data.html_url
     };
+}
+
+/**
+ * Get the org details. Throws if org doesn't exist or is simple GitHub username passed.
+ * @param {string} org
+ * @return {Promise<{number:number, html_url:string}>}
+ * @throws if org doesn't exist
+ */
+export async function getOrgDetails(org) {
+    // https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue
+    // {... "html_url": "https://github.com/octocat/Hello-World/issues/1347", ...}
+    let response = await octokit.request(`GET /orgs/${org}`, {
+        org
+    });
+
+    let orgDetails = {
+        name: response.data.name,
+        company: response.data.company,
+        blog: response.data.blog,
+        is_verified: response.data.is_verified,
+        html_url: response.data.html_url
+    };
+
+    console.log("getting org details: ", orgDetails);
+    return orgDetails;
 }

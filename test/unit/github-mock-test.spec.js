@@ -12,7 +12,7 @@
 /*global describe, it, beforeEach, before*/
 
 import mockedFunctions from "./setupMocks.js";
-import {createIssue, commentOnIssue, initClient} from "../../src/github.js";
+import {createIssue, commentOnIssue, initGitHubClient, getOrgDetails} from "../../src/github.js";
 import * as chai from 'chai';
 
 let expect = chai.expect;
@@ -21,7 +21,7 @@ describe('github mock Tests', function() {
     let url, options, githubResponse;
 
     before(function () {
-        initClient();
+        initGitHubClient();
     });
 
     beforeEach(function () {
@@ -57,6 +57,23 @@ describe('github mock Tests', function() {
         let response = await commentOnIssue("own", "repo", 1, "message");
         expect(url).to.equal("POST /repos/own/repo/issues/1/comments");
         expect(options.body).to.equal("message");
+        expect(response).to.eql(data);
+    });
+
+    it('should get org details', async function() {
+        let data = {
+            name: 'Phoenix Code',
+            company: null,
+            blog: 'https://phcode.dev',
+            is_verified: true,
+            html_url: 'https://github.com/phcode-dev'
+        };
+        githubResponse = {
+            data
+        };
+        let response = await getOrgDetails("org");
+        expect(url).to.equal("GET /orgs/org");
+        expect(options.org).to.equal("org");
         expect(response).to.eql(data);
     });
 });
