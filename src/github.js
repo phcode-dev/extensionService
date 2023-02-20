@@ -77,7 +77,8 @@ export async function commentOnIssue(owner, repo, issueNumber, commentString) {
 /**
  * Get the org details. Throws if org doesn't exist or is simple GitHub username passed.
  * @param {string} org
- * @return {Promise<{number:number, html_url:string}>}
+ * @return {Promise<{is_verified:boolean, html_url:string, blog:string,
+ * name:string, company:string}>} blog is the verified url for the org.
  * @throws if org doesn't exist
  */
 export async function getOrgDetails(org) {
