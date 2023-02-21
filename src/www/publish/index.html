@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="description" content="" />
+        <meta
+            name="author"
+            content="Mark Otto, Jacob Thornton, and Bootstrap contributors" />
+        <meta name="generator" content="Hugo 0.98.0" />
+        <title>Jumbotron example · Bootstrap v5.2</title>
+        <script>
+            if (
+                !location.href.endsWith("/") &&
+                !location.href.endsWith("index.html")
+            ) {
+                location.href = location.href + "/";
+            }
+        </script>
+
+        <link
+            rel="canonical"
+            href="https://getbootstrap.com/docs/5.2/examples/jumbotron/" />
+
+        <link href="../bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+
+        <style>
+            .bd-placeholder-img {
+                font-size: 1.125rem;
+                text-anchor: middle;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                user-select: none;
+            }
+
+            @media (min-width: 768px) {
+                .bd-placeholder-img-lg {
+                    font-size: 3.5rem;
+                }
+            }
+
+            .b-example-divider {
+                height: 3rem;
+                background-color: rgba(0, 0, 0, 0.1);
+                border: solid rgba(0, 0, 0, 0.15);
+                border-width: 1px 0;
+                box-shadow: inset 0 0.5em 1.5em rgba(0, 0, 0, 0.1),
+                    inset 0 0.125em 0.5em rgba(0, 0, 0, 0.15);
+            }
+
+            .b-example-vr {
+                flex-shrink: 0;
+                width: 1.5rem;
+                height: 100vh;
+            }
+
+            .bi {
+                vertical-align: -0.125em;
+                fill: currentColor;
+            }
+
+            .nav-scroller {
+                position: relative;
+                z-index: 2;
+                height: 2.75rem;
+                overflow-y: hidden;
+            }
+
+            .nav-scroller .nav {
+                display: flex;
+                flex-wrap: nowrap;
+                padding-bottom: 1rem;
+                margin-top: -1px;
+                overflow-x: auto;
+                text-align: center;
+                white-space: nowrap;
+                -webkit-overflow-scrolling: touch;
+            }
+            .logo {
+                width: 44px;
+                margin-right: 12px;
+            }
+            .status-fail {
+                color: red;
+            }
+            .status-success {
+                color: green;
+            }
+            .hidden {
+                display: none;
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <div class="container py-4">
+                <header class="pb-3 mb-4 border-bottom">
+                    <img src="../images/phoenix_logo.svg" class="logo" />
+                    <span class="fs-4">Extension Publish Status</span>
+                </header>
+
+                <div
+                    id="releaseCheckingSection"
+                    class="p-5 mb-4 bg-light rounded-3">
+                    <div class="container-fluid py-5">
+                        <h2 id="releaseCheckStatus">Please wait...</h2>
+                    </div>
+                </div>
+
+                <div
+                    id="releaseSuccessSection"
+                    class="p-5 mb-4 bg-light rounded-3 hidden">
+                    <div class="container-fluid py-5">
+                        <h1 class="display-4 fw-bold status-fail">
+                            <a
+                                class="status-success"
+                                href="https://github.com/user/repo/releases/tag/githubReleaseTag"
+                                target="_blank"
+                                >extension, githubReleaseTag Published</a
+                            >
+                        </h1>
+                        <h2>version: 3.2.5</h2>
+                        <p class="col-md-8 fs-4">Release details</p>
+                        <div
+                            class="alert alert-success alert-dismissible fade show"
+                            role="alert">
+                            Publish date:
+                            <span id="publishedDate">1/Jan/2023 UTC</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    id="releaseFailedSection"
+                    class="p-5 mb-4 bg-light rounded-3 hidden">
+                    <div class="container-fluid py-5">
+                        <h1 class="display-4 fw-bold status-fail">
+                            <a
+                                class="status-fail"
+                                href="https://github.com/user/repo/releases/tag/dfg"
+                                target="_blank"
+                                >extension, githubReleaseTag: Publish Failed</a
+                            >
+                        </h1>
+                        <p class="col-md-8 fs-4">
+                            Please fix the below errors and retry release.
+                        </p>
+                        <div
+                            class="alert alert-warning alert-dismissible fade show"
+                            role="alert">
+                            Last procesed date:
+                            <span id="processedDate">1/Jan/2023 UTC</span>
+                        </div>
+                        <div id="publishErrorList">
+                            <div
+                                class="alert alert-danger alert-dismissible fade show"
+                                role="alert">
+                                Fix this and that.
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-lg" type="button">
+                            Retry release
+                        </button>
+                    </div>
+                </div>
+                <footer class="pt-3 mt-4 text-muted border-top">
+                    &copy; phcode.dev 2023-present
+                </footer>
+            </div>
+        </main>
+    </body>
+</html>
