@@ -15,7 +15,8 @@
   "exclude": [
     "**/*.spec.js",
     "src/index.js",
-    "src/server.js"
+    "src/server.js",
+    "src/www/bootstrap/*"
   ],
   "branches": 80,
   "lines": 90,
