@@ -56,20 +56,25 @@ const simpleGETRequest = {
         method: "GET",
         statusCode: null,
         statusMessage: null
-    },
-    log: logger
+    }
 };
 export function getSimpleGETRequest() {
-    return {...simpleGETRequest};
+    let request = structuredClone(simpleGETRequest);
+    request.log = logger;
+    return request;
 }
 
 const simpleGetReply = {
     request: simpleGETRequest,
-    log: logger,
     raw: {}
 };
 export function getSimpleGetReply() {
-    return {...simpleGetReply};
+    let reply = structuredClone(simpleGetReply);
+    reply.log = logger;
+    reply.status = function (code) {
+        reply.statusCode = code;
+    }
+    return reply;
 }
 
 

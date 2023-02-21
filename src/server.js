@@ -26,6 +26,7 @@ import {HTTP_STATUS_CODES} from "@aicore/libcommonutils";
 import {getConfigs} from "./utils/configs.js";
 import {cocoEndPoint, cocoAuthKey} from "./constants.js";
 import {getHelloSchema, hello} from "./api/hello.js";
+import {getPublishGithubReleaseSchema, publishGithubRelease} from "./api/publishGithubRelease.js";
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {initGitHubClient} from "./github.js";
@@ -80,6 +81,12 @@ server.get('/www', function(req, res){
 addUnAuthenticatedAPI('/hello');
 server.get('/hello', getHelloSchema(), function (request, reply) {
     return hello(request, reply);
+});
+
+// public publishGithubRelease api
+addUnAuthenticatedAPI('/publishGithubRelease');
+server.get('/publishGithubRelease', getPublishGithubReleaseSchema(), function (request, reply) {
+    return publishGithubRelease(request, reply);
 });
 
 // An authenticated version of the hello api
