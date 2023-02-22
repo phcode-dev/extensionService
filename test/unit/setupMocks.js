@@ -6,11 +6,16 @@ import {_gitHub} from "../../src/github.js";
 let expect = chai.expect;
 
 let setupDone = false;
-let mockedFunctions = {
-    db,
-    s3MockedKeyValues:{},
-    githubRequestFnMock: function () {}
-};
+
+let getRepoDetailsResponses = {};
+async function githubRequestFnMock(url, options) {
+    if(url.startsWith("GET /repos/")){ // getRepoDetails api
+        if(getRepoDetailsResponses[`${options.owner}/${options.repo}`]) {
+            return getRepoDetailsResponses[`${options.owner}/${options.repo}`];
+        }
+        throw {status: 404};
+    }
+}
 
 const MOCKED_ENV_VAR = "mocked_env_var";
 
@@ -96,4 +101,30 @@ export function setS3Mock(bucket, key, contents) {
     mockedFunctions.s3MockedKeyValues[bucket+"#"+key] = contents;
 }
 
+/**
+ * mocks existance of the repo for github::getRepoDetails api
+ * @param org
+ * @param repo
+ */
+export function getRepoDetails(org, repo) {
+    mockedFunctions.githubRequestFnMock = githubRequestFnMock;
+    getRepoDetailsResponses[`${org}/${repo}`] = {
+        data: {
+            stargazers_count: 3,
+            html_url: `https://github.com/${org}/${repo}`
+        }
+    };
+}
+
+let mockedFunctions = {
+    db,
+    s3MockedKeyValues:{},
+    githubRequestFnMock, // you should almost always use githubMock instead of githubRequestFnMock
+    githubMock: {
+        getRepoDetails,
+        reset: function () {
+            getRepoDetailsResponses = {};
+        }
+    }
+};
 export default mockedFunctions;
