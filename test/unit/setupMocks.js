@@ -123,7 +123,7 @@ export function getRepoDetails(org, repo) {
     };
 }
 
-export function getReleaseDetails(owner, repo, tag) {
+export function getReleaseDetails(owner, repo, tag, assetName = 'extension.zip', size = 1024) {
     mockedFunctions.githubRequestFnMock = githubRequestFnMock;
     getReleaseDetailsResponses[`${owner}/${repo}/${tag}`] = {
         data: {
@@ -134,8 +134,8 @@ export function getReleaseDetails(owner, repo, tag) {
                 {
                     browser_download_url:
                         'https://download/extension.zip',
-                    name: 'extension.zip',
-                    size: 718,
+                    name: assetName,
+                    size,
                     content_type: 'application/x-zip-compressed'
                 }
             ]

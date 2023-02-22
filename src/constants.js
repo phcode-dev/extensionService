@@ -14,6 +14,7 @@ export const ARCHIVE_FOLDER = "archive";
 export const POPULARITY_FILE = "popularity.json";
 export const REGISTRY_FILE = "registry.json";
 export const REGISTRY_VERSION_FILE = "registry_version.json";
+export const EXTENSION_SIZE_LIMIT_MB = 50;
 export const FIELD_EXTENSION_ID = "EXTENSION_ID",
     FIELD_RELEASE_ID = "RELEASE_ID",
     FIELD_TYPE = 'VARCHAR(128)';

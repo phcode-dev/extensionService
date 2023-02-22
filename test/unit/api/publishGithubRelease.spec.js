@@ -6,6 +6,7 @@ import {publishGithubRelease, getPublishGithubReleaseSchema} from "../../../src/
 import {getSimpleGetReply, getSimpleGETRequest} from '../data/simple-request.js';
 import Ajv from "ajv";
 import {initGitHubClient} from "../../../src/github.js";
+import {EXTENSION_SIZE_LIMIT_MB} from "../../../src/constants.js";
 
 export const AJV = new Ajv();
 
@@ -26,6 +27,11 @@ describe('unit Tests for publishGithubRelease api', function () {
         request = getSimpleGETRequest();
         reply = getSimpleGetReply();
         request.query.releaseRef = "org/repo:refs/tags/gitTag";
+        db.getFromIndex = function (_tableName) {
+            return {isSuccess: true,
+                documents:[]
+            };
+        };
     });
 
     it('should publishGithubRelease', async function () {
@@ -105,6 +111,14 @@ describe('unit Tests for publishGithubRelease api', function () {
 
     it('should return bad request if no such release', async function () {
         request.query.releaseRef = "org/repo:refs/tags/gitTag2";
+        let response = await publishGithubRelease(request, reply);
+        expect(reply.statusCode).to.eq(400);
+        expect(response).eql("Release org/repo/gitTag2 not found in GitHub");
+    });
+
+    it('should return bad request if extension.zip not attached in release', async function () {
+        mockedFunctions.githubMock.getReleaseDetails("org", "repo", "gitTag3", "nop.zip");
+        request.query.releaseRef = "org/repo:refs/tags/gitTag3";
         db.getFromIndex = function (_tableName) {
             return {isSuccess: true,
                 documents:[]
@@ -112,6 +126,20 @@ describe('unit Tests for publishGithubRelease api', function () {
         };
         let response = await publishGithubRelease(request, reply);
         expect(reply.statusCode).to.eq(400);
-        expect(response).eql("Release org/repo/gitTag2 not found in GitHub");
+        expect(response).eql("Release does not contain required `extension.zip` file attached.");
+    });
+
+    it('should return bad request if extension.zip greater than 50MB', async function () {
+        mockedFunctions.githubMock.getReleaseDetails("org", "repo", "gitTag3", "extension.zip",
+            EXTENSION_SIZE_LIMIT_MB*1024*1024+1);
+        request.query.releaseRef = "org/repo:refs/tags/gitTag3";
+        db.getFromIndex = function (_tableName) {
+            return {isSuccess: true,
+                documents:[]
+            };
+        };
+        let response = await publishGithubRelease(request, reply);
+        expect(reply.statusCode).to.eq(400);
+        expect(response).eql(`Attached \`extension.zip\` file should be smaller than ${EXTENSION_SIZE_LIMIT_MB}MB`);
     });
 });
