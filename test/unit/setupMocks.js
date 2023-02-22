@@ -7,11 +7,18 @@ let expect = chai.expect;
 
 let setupDone = false;
 
-let getRepoDetailsResponses = {};
+let getRepoDetailsResponses = {},
+    getReleaseDetailsResponses = {};
 async function githubRequestFnMock(url, options) {
-    if(url.startsWith("GET /repos/")){ // getRepoDetails api
+    if(url.startsWith("GET /repos/") && !url.includes("/releases/tags/")){ // getRepoDetails api
         if(getRepoDetailsResponses[`${options.owner}/${options.repo}`]) {
             return getRepoDetailsResponses[`${options.owner}/${options.repo}`];
+        }
+        throw {status: 404};
+    }
+    if(url.startsWith("GET /repos/") && url.includes("/releases/tags/")){ // getRepoDetails api
+        if(getReleaseDetailsResponses[`${options.owner}/${options.repo}/${options.tag}`]) {
+            return getReleaseDetailsResponses[`${options.owner}/${options.repo}/${options.tag}`];
         }
         throw {status: 404};
     }
@@ -116,14 +123,37 @@ export function getRepoDetails(org, repo) {
     };
 }
 
+export function getReleaseDetails(owner, repo, tag) {
+    mockedFunctions.githubRequestFnMock = githubRequestFnMock;
+    getReleaseDetailsResponses[`${owner}/${repo}/${tag}`] = {
+        data: {
+            html_url: `https://github.com/${owner}/${repo}/releases/tag/${tag}`,
+            draft: false,
+            prerelease: false,
+            assets: [
+                {
+                    browser_download_url:
+                        'https://download/extension.zip',
+                    name: 'extension.zip',
+                    size: 718,
+                    content_type: 'application/x-zip-compressed'
+                }
+            ]
+        }
+    };
+}
+
+
 let mockedFunctions = {
     db,
-    s3MockedKeyValues:{},
+    s3MockedKeyValues: {},
     githubRequestFnMock, // you should almost always use githubMock instead of githubRequestFnMock
     githubMock: {
         getRepoDetails,
+        getReleaseDetails,
         reset: function () {
             getRepoDetailsResponses = {};
+            getReleaseDetailsResponses = {};
         }
     }
 };

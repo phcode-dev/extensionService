@@ -19,6 +19,7 @@ describe('unit Tests for publishGithubRelease api', function () {
         initGitHubClient();
         mockedFunctions.githubMock.reset();
         mockedFunctions.githubMock.getRepoDetails("org", "repo");
+        mockedFunctions.githubMock.getReleaseDetails("org", "repo", "gitTag");
     });
 
     beforeEach(function () {
@@ -92,9 +93,7 @@ describe('unit Tests for publishGithubRelease api', function () {
     });
 
     it('should return bad request if release already published', async function () {
-        let tableName;
         db.getFromIndex = function (_tableName) {
-            tableName = _tableName;
             return {isSuccess: true,
                 documents:[{published: true}]
             };
@@ -102,5 +101,17 @@ describe('unit Tests for publishGithubRelease api', function () {
         let response = await publishGithubRelease(request, reply);
         expect(reply.statusCode).to.eq(400);
         expect(response).eql("Release org/repo/gitTag already published!");
+    });
+
+    it('should return bad request if no such release', async function () {
+        request.query.releaseRef = "org/repo:refs/tags/gitTag2";
+        db.getFromIndex = function (_tableName) {
+            return {isSuccess: true,
+                documents:[]
+            };
+        };
+        let response = await publishGithubRelease(request, reply);
+        expect(reply.statusCode).to.eq(400);
+        expect(response).eql("Release org/repo/gitTag2 not found in GitHub");
     });
 });

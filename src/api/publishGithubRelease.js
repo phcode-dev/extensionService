@@ -1,6 +1,6 @@
 // Refer https://json-schema.org/understanding-json-schema/index.html
 import {HTTP_STATUS_CODES} from "@aicore/libcommonutils";
-import {getRepoDetails} from "../github.js";
+import {getRepoDetails, getReleaseDetails} from "../github.js";
 import db from "../db.js";
 import {FIELD_RELEASE_ID, RELEASE_DETAILS_TABLE} from "../constants.js";
 
@@ -60,7 +60,7 @@ function _validateAndGetParams(releaseRef) {
     };
 }
 
-async function _processGithubRelease(release) {
+async function _validateAlreadyReleased(release) {
     let repo = await getRepoDetails(release.owner, release.repo);
     if(!repo) {
         throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
@@ -69,22 +69,42 @@ async function _processGithubRelease(release) {
     const releaseRef = `${release.owner}/${release.repo}/${release.tag}`;
     const queryObj = {};
     queryObj[FIELD_RELEASE_ID] = releaseRef;
-    const releaseDetails = await db.getFromIndex(RELEASE_DETAILS_TABLE, queryObj);
-    if(!releaseDetails.isSuccess){
+    let existingRelease = await db.getFromIndex(RELEASE_DETAILS_TABLE, queryObj);
+    if(!existingRelease.isSuccess){
         // unexpected error
         throw new Error("Error getting release details from db: " + releaseRef);
     }
-    if(releaseDetails.documents.length === 1 && releaseDetails.documents[0].published){
+    existingRelease = existingRelease.documents.length === 1 ? existingRelease.documents[0] : null;
+    if(existingRelease?.published){
         throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
             error: `Release ${releaseRef} already published!`};
     }
-    console.log(releaseDetails);
+    return {
+        repoDetails: repo,
+        existingRelease
+    };
+}
+
+async function _validateGithubRelease(githubRelease, issueMessages) {
+    const releaseRef = `${githubRelease.owner}/${githubRelease.repo}/${githubRelease.tag}`;
+    let release = await getReleaseDetails(githubRelease.owner, githubRelease.repo, githubRelease.tag);
+    if(!release) {
+        // this need not be reported in a user issue as it is unlikely to happen.
+        // we call this api via github on-released action
+        throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+            error: `Release ${releaseRef} not found in GitHub`};
+    }
 }
 
 export async function publishGithubRelease(request, reply) {
+    let issueMessages = [],
+        existingGithubIssue,
+        githubRelease;
     try {
-        let githubRelease = _validateAndGetParams(request.query.releaseRef);
-        await _processGithubRelease(githubRelease);
+        githubRelease = _validateAndGetParams(request.query.releaseRef);
+        const {repoDetails, existingRelease} = await _validateAlreadyReleased(githubRelease);
+        existingGithubIssue = existingRelease?.existingGithubIssue;
+        await _validateGithubRelease(githubRelease, issueMessages);
         const response = {
             message: "done"
         };
