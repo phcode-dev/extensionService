@@ -2,7 +2,7 @@
 import {HTTP_STATUS_CODES} from "@aicore/libcommonutils";
 import {getRepoDetails, getReleaseDetails} from "../github.js";
 import db from "../db.js";
-import {FIELD_RELEASE_ID, RELEASE_DETAILS_TABLE} from "../constants.js";
+import {FIELD_RELEASE_ID, RELEASE_DETAILS_TABLE, EXTENSION_SIZE_LIMIT_MB} from "../constants.js";
 
 const schema = {
     schema: {
@@ -85,26 +85,55 @@ async function _validateAlreadyReleased(release) {
     };
 }
 
-async function _validateGithubRelease(githubRelease, issueMessages) {
-    const releaseRef = `${githubRelease.owner}/${githubRelease.repo}/${githubRelease.tag}`;
-    let release = await getReleaseDetails(githubRelease.owner, githubRelease.repo, githubRelease.tag);
+/**
+ *
+ * @param githubReleaseTag
+ * @return {Promise<{html_url: string, draft: boolean, prerelease: boolean,
+ * assets: Array<{browser_download_url: string, name: string, size: number, content_type: string}>}>}
+ * @private
+ */
+async function _validateGithubRelease(githubReleaseTag) {
+    const releaseRef = `${githubReleaseTag.owner}/${githubReleaseTag.repo}/${githubReleaseTag.tag}`;
+    let release = await getReleaseDetails(githubReleaseTag.owner, githubReleaseTag.repo, githubReleaseTag.tag);
     if(!release) {
         // this need not be reported in a user issue as it is unlikely to happen.
         // we call this api via github on-released action
         throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
             error: `Release ${releaseRef} not found in GitHub`};
     }
+    return release;
 }
 
+function _validateExtensionZip(githubReleaseDetails, issueMessages) {
+    let extensionZipAsset;
+    for(let asset of githubReleaseDetails.assets){
+        if(asset.name === 'extension.zip'){
+            extensionZipAsset = asset;
+        }
+    }
+    if(!extensionZipAsset) {
+        let userMessage = "Release does not contain required `extension.zip` file attached.";
+        issueMessages.push(userMessage);
+        throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+            error: userMessage};
+    }
+    if(extensionZipAsset.size > EXTENSION_SIZE_LIMIT_MB*1024*1024){
+        let userMessage = `Attached \`extension.zip\` file should be smaller than ${EXTENSION_SIZE_LIMIT_MB}MB`;
+        issueMessages.push(userMessage);
+        throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+            error: userMessage};
+    }
+}
 export async function publishGithubRelease(request, reply) {
     let issueMessages = [],
         existingGithubIssue,
-        githubRelease;
+        githubReleaseTag;
     try {
-        githubRelease = _validateAndGetParams(request.query.releaseRef);
-        const {repoDetails, existingRelease} = await _validateAlreadyReleased(githubRelease);
+        githubReleaseTag = _validateAndGetParams(request.query.releaseRef);
+        const {repoDetails, existingRelease} = await _validateAlreadyReleased(githubReleaseTag);
         existingGithubIssue = existingRelease?.existingGithubIssue;
-        await _validateGithubRelease(githubRelease, issueMessages);
+        const githubReleaseDetails = await _validateGithubRelease(githubReleaseTag);
+        await _validateExtensionZip(githubReleaseDetails, issueMessages);
         const response = {
             message: "done"
         };
