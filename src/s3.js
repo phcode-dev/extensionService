@@ -22,6 +22,12 @@ function _initClient() {
     });
 }
 
+/**
+ *
+ * @param Bucket
+ * @param Key
+ * @return {Promise<string>}
+ */
 export function getObject (Bucket, Key) {
     _initClient();
     return new Promise(async (resolve, reject) => {
