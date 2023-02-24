@@ -11,7 +11,8 @@ const defaultTestConfig = {
     "stage": "can be dev/prod . update in testConfig.json",
     "accessKeyId": "update in testConfig.json file to run integ tests",
     "secretAccessKey": "update in testConfig.json file to run integ tests",
-    "githubAPIToken": "update in testConfig.json file to run integ tests"
+    "githubAPIToken": "update in testConfig.json file to run integ tests",
+    "baseURL": "update in testConfig.json file to run integ tests"
 };
 
 

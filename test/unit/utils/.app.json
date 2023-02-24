@@ -6,6 +6,7 @@
   "cocoAuthKey": "cocoAuthKey",
   "stage": "test",
   "githubAPIToken": "githubToken",
+  "baseURL": "http://localhost:5000",
   "mysql": {
     "host": "localhost",
     "port": "3306",
