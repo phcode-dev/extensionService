@@ -1,6 +1,6 @@
 import * as chai from 'chai';
 import db from "../../src/db.js";
-import {s3} from "../../src/s3.js";
+import {_s3} from "../../src/s3.js";
 import {_gitHub} from "../../src/github.js";
 
 let expect = chai.expect;
@@ -52,7 +52,7 @@ function _setup() {
         process.env[envName] = MOCKED_ENV_VAR;
     }
 
-    s3.S3Client = class s3c{
+    _s3.S3Client = class s3c{
         constructor(param) {
             expect(param.region).eq("us-east-1");
         }
@@ -83,11 +83,11 @@ function _setup() {
         }
     };
 
-    s3.GetObjectCommand = function ({ Bucket, Key }){
+    _s3.GetObjectCommand = function ({ Bucket, Key }){
         return { Bucket, Key, type: "get"};
     };
 
-    s3.PutObjectCommand = function ({ Bucket, Key, Body }){
+    _s3.PutObjectCommand = function ({ Bucket, Key, Body }){
         return { Bucket, Key, type: "put", thingToPut: Body};
     };
 

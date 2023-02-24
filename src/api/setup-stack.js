@@ -4,7 +4,7 @@ import {
 }
     from "../constants.js";
 import db from "../db.js";
-import {getObject} from "../s3.js";
+import {S3} from "../s3.js";
 
 // Refer https://json-schema.org/understanding-json-schema/index.html
 const schema = {
@@ -79,7 +79,7 @@ export async function setupStackForStage() {
         console.log("creating Index ", await db.createIndex(RELEASE_DETAILS_TABLE, FIELD_RELEASE_ID, FIELD_TYPE,
             true, true));
         console.log("reading registry file");
-        let registry = JSON.parse(await getObject(EXTENSIONS_BUCKET, REGISTRY_FILE));
+        let registry = JSON.parse(await S3.getObject(EXTENSIONS_BUCKET, REGISTRY_FILE));
         console.log("updating tables with registry");
         await _putDataInTable(registry, EXTENSIONS_DETAILS_TABLE);
         console.log("done");

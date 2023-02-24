@@ -2,7 +2,7 @@
 import {setS3Mock} from "../setupMocks.js";
 import * as chai from 'chai';
 import {backupRegistry, getArchiveObjectPath, setupTasks, cancelTasks} from "../../../src/api/backup-registry.js";
-import {getObject} from "../../../src/s3.js";
+import {S3} from "../../../src/s3.js";
 import {REGISTRY_FILE, REGISTRY_VERSION_FILE, POPULARITY_FILE} from "../../../src/constants.js";
 
 let expect = chai.expect;
@@ -16,11 +16,11 @@ describe('unit Tests for setupStack api', function () {
         setS3Mock(bucket, POPULARITY_FILE, "h3");
         let response = await backupRegistry();
         expect(response.status).to.equal("done");
-        let s3Obj = await getObject(bucket, getArchiveObjectPath(REGISTRY_FILE));
+        let s3Obj = await S3.getObject(bucket, getArchiveObjectPath(REGISTRY_FILE));
         expect(s3Obj).to.equal("h1");
-        s3Obj = await getObject(bucket, getArchiveObjectPath(REGISTRY_VERSION_FILE));
+        s3Obj = await S3.getObject(bucket, getArchiveObjectPath(REGISTRY_VERSION_FILE));
         expect(s3Obj).to.equal("h2");
-        s3Obj = await getObject(bucket, getArchiveObjectPath(POPULARITY_FILE));
+        s3Obj = await S3.getObject(bucket, getArchiveObjectPath(POPULARITY_FILE));
         expect(s3Obj).to.equal("h3");
     });
 

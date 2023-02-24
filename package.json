@@ -65,6 +65,7 @@
     "@aicore/cocodb-ws-client": "^1.0.13",
     "@aicore/libcommonutils": "1.0.19",
     "@aws-sdk/client-s3": "^3.264.0",
+    "@aws-sdk/lib-storage": "^3.278.0",
     "@fastify/static": "^6.9.0",
     "@octokit/rest": "^19.0.7",
     "fastify": "4.12.0",

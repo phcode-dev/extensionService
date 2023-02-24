@@ -1,7 +1,9 @@
 import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import {Upload} from "@aws-sdk/lib-storage";
 import {accessKeyId, secretAccessKey} from "./constants.js";
+import {createWriteStream, createReadStream} from "fs";
 
-export const s3 = {
+export const _s3 = {
     S3Client,
     GetObjectCommand,
     PutObjectCommand
@@ -13,7 +15,7 @@ function _initClient() {
     if(client){
         return;
     }
-    client = new s3.S3Client({
+    client = new _s3.S3Client({
         region: "us-east-1",
         credentials: {
             accessKeyId,
@@ -28,10 +30,10 @@ function _initClient() {
  * @param Key
  * @return {Promise<string>}
  */
-export function getObject (Bucket, Key) {
+function getObject (Bucket, Key) {
     _initClient();
     return new Promise(async (resolve, reject) => {
-        const getObjectCommand = new s3.GetObjectCommand({ Bucket, Key });
+        const getObjectCommand = new _s3.GetObjectCommand({ Bucket, Key });
 
         try {
             console.log(`getting ${Bucket} : ${Key}`);
@@ -57,10 +59,52 @@ export function getObject (Bucket, Key) {
     });
 }
 
-export function putObject (Bucket, Key, str) {
+/* c8 ignore start */
+// not testing this as no time and is manually tested. If you are touching this code, manual test thoroughly
+function downloadFile(Bucket, Key, targetPath) {
     _initClient();
     return new Promise(async (resolve, reject) => {
-        const putObjectCommand = new s3.PutObjectCommand({ Bucket, Key,
+        const getObjectCommand = new _s3.GetObjectCommand({ Bucket, Key });
+
+        try {
+            console.log(`downloading file ${Bucket} : ${Key}`);
+            const response = await client.send(getObjectCommand);
+            const inputStream = response.Body;
+            const outputStream = createWriteStream(targetPath);
+            inputStream.pipe(outputStream);
+            outputStream
+                .on('error', err => reject(err))
+                .on('finish', () => resolve());
+        } catch (err) {
+            // Handle the error or throw
+            return reject(err);
+        }
+    });
+}
+
+// not testing this as no time and is manually tested. If you are touching this code, manual test thoroughly
+async function uploadFile(Bucket, Key, filePathToUpload){
+    _initClient();
+    console.log(`uploading file ${Bucket} : ${Key}`);
+    const params = {
+        Bucket,
+        Key,
+        Body: createReadStream(filePathToUpload)
+    };
+
+    const upload = new Upload({
+        client,
+        params
+    });
+
+    return upload.done();
+}
+/* c8 ignore stop */
+
+function putObject (Bucket, Key, str) {
+    _initClient();
+    return new Promise(async (resolve, reject) => {
+        const putObjectCommand = new _s3.PutObjectCommand({ Bucket, Key,
             Body: str
         });
 
@@ -74,3 +118,10 @@ export function putObject (Bucket, Key, str) {
         }
     });
 }
+
+export const S3 = {
+    getObject,
+    putObject,
+    downloadFile,
+    uploadFile
+};

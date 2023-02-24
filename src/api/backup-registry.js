@@ -1,6 +1,6 @@
 import {EXTENSIONS_BUCKET, REGISTRY_FILE, REGISTRY_VERSION_FILE,
     POPULARITY_FILE, ARCHIVE_FOLDER} from "../constants.js";
-import {putObject, getObject} from "../s3.js";
+import {S3} from "../s3.js";
 
 const ONE_DAY_IN_MS = 24*60*60*1000;
 
@@ -30,12 +30,12 @@ export function getArchiveObjectPath(fileName) {
 
 export async function backupRegistry() {
     try {
-        let contents = await getObject(EXTENSIONS_BUCKET, REGISTRY_FILE);
-        await putObject(EXTENSIONS_BUCKET, getArchiveObjectPath(REGISTRY_FILE), contents);
-        contents = await getObject(EXTENSIONS_BUCKET, REGISTRY_VERSION_FILE);
-        await putObject(EXTENSIONS_BUCKET, getArchiveObjectPath(REGISTRY_VERSION_FILE), contents);
-        contents = await getObject(EXTENSIONS_BUCKET, POPULARITY_FILE);
-        await putObject(EXTENSIONS_BUCKET, getArchiveObjectPath(POPULARITY_FILE), contents);
+        let contents = await S3.getObject(EXTENSIONS_BUCKET, REGISTRY_FILE);
+        await S3.putObject(EXTENSIONS_BUCKET, getArchiveObjectPath(REGISTRY_FILE), contents);
+        contents = await S3.getObject(EXTENSIONS_BUCKET, REGISTRY_VERSION_FILE);
+        await S3.putObject(EXTENSIONS_BUCKET, getArchiveObjectPath(REGISTRY_VERSION_FILE), contents);
+        contents = await S3.getObject(EXTENSIONS_BUCKET, POPULARITY_FILE);
+        await S3.putObject(EXTENSIONS_BUCKET, getArchiveObjectPath(POPULARITY_FILE), contents);
         return {
             status: "done"
         };
