@@ -1,8 +1,8 @@
 // Refer https://json-schema.org/understanding-json-schema/index.html
 import {HTTP_STATUS_CODES} from "@aicore/libcommonutils";
-import {getRepoDetails, getReleaseDetails} from "../github.js";
+import {getRepoDetails, getReleaseDetails, createIssue} from "../github.js";
 import db from "../db.js";
-import {FIELD_RELEASE_ID, RELEASE_DETAILS_TABLE, EXTENSION_SIZE_LIMIT_MB} from "../constants.js";
+import {FIELD_RELEASE_ID, RELEASE_DETAILS_TABLE, EXTENSION_SIZE_LIMIT_MB, BASE_URL} from "../constants.js";
 
 const schema = {
     schema: {
@@ -124,14 +124,51 @@ function _validateExtensionZip(githubReleaseDetails, issueMessages) {
             error: userMessage};
     }
 }
+
+async function _createGithubIssue(release) {
+    let {number} = await createIssue(release.owner, release.repo,
+        `[Phcode.dev Bot] Publishing Release ${release.tag} to Extension Store`,
+`Thank you for contributing to [phcode.dev](https://phcode.dev) extension store.\n
+[Please track extension/theme publish status by clicking this link.](${BASE_URL}/www/publish/?owner=${release.owner}&repo=${release.repo}&tag=${release.tag})`);
+    return number;
+}
+
+async function _updatePublishErrors(release, existingReleaseInfo, issueMessages) {
+    try{
+        const releaseRef = `${release.owner}/${release.repo}/${release.tag}`;
+        if(existingReleaseInfo && existingReleaseInfo.documentId) {
+            console.log(`existing release ${releaseRef} found: `, existingReleaseInfo);
+            existingReleaseInfo.errors = issueMessages;
+            if(!existingReleaseInfo.githubIssue){
+                existingReleaseInfo.githubIssue = await _createGithubIssue(release);
+            }
+            await db.update(RELEASE_DETAILS_TABLE, existingReleaseInfo.documentId,
+                existingReleaseInfo);
+        } else {
+            console.log(`updating new release ${releaseRef} error messages: `, issueMessages);
+            let releaseInfo = {
+                errors: issueMessages,
+                githubIssue: await _createGithubIssue(release)
+            };
+            releaseInfo[FIELD_RELEASE_ID] = releaseRef;
+            console.log(`Putting release ${releaseRef} details to db`,
+                await db.put(RELEASE_DETAILS_TABLE, releaseInfo));
+        }
+    } catch (e) {
+        console.error("Error while putting error status of release. ", e);
+        // silently bail out
+    }
+}
+
 export async function publishGithubRelease(request, reply) {
     let issueMessages = [],
-        existingGithubIssue,
-        githubReleaseTag;
+        existingReleaseInfo = null,
+        githubReleaseTag = null;
     try {
+        // releaseRef of the form <org>/<repo>:refs/tags/<dfg>
         githubReleaseTag = _validateAndGetParams(request.query.releaseRef);
         const {repoDetails, existingRelease} = await _validateAlreadyReleased(githubReleaseTag);
-        existingGithubIssue = existingRelease?.existingGithubIssue;
+        existingReleaseInfo = existingRelease;
         const githubReleaseDetails = await _validateGithubRelease(githubReleaseTag);
         await _validateExtensionZip(githubReleaseDetails, issueMessages);
         const response = {
@@ -139,6 +176,9 @@ export async function publishGithubRelease(request, reply) {
         };
         return response;
     } catch (err) {
+        if(issueMessages.length){
+            _updatePublishErrors(githubReleaseTag, existingReleaseInfo, issueMessages);
+        }
         if(err.status){
             reply.status(err.status);
             return err.error;

@@ -3,7 +3,7 @@ import * as fs from "fs";
 let APP_CONFIG = null;
 
 function _checkRequiredConfigs(config) {
-    const requiredConfigVars = ["cocoEndPoint", "cocoAuthKey", "stage", "githubAPIToken"];
+    const requiredConfigVars = ["cocoEndPoint", "cocoAuthKey", "stage", "githubAPIToken", "baseURL"];
     let missingEnvVars = [];
     for (let envName of requiredConfigVars){
         if(!config[envName]){

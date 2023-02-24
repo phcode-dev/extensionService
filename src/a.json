@@ -1,5 +1,12 @@
 {
   "authKey": "123",
   "allowPublicAccess": false,
-  "port": 5000
+  "port": 5000,
+  "cocoEndPoint": "wss://<end point>",
+  "cocoAuthKey": "da key",
+  "stage": "dev",
+  "accessKeyId": "<aws id>",
+  "secretAccessKey": "<aws key>",
+  "githubAPIToken": "<github token>",
+  "baseURL": "http://localhost:5000"
 }

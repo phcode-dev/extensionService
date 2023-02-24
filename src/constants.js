@@ -18,3 +18,4 @@ export const EXTENSION_SIZE_LIMIT_MB = 50;
 export const FIELD_EXTENSION_ID = "EXTENSION_ID",
     FIELD_RELEASE_ID = "RELEASE_ID",
     FIELD_TYPE = 'VARCHAR(128)';
+export const BASE_URL = getConfigs().baseURL;
