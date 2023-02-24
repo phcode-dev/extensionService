@@ -12,7 +12,7 @@
 /*global describe, it*/
 
 import {setS3Mock} from "./setupMocks.js";
-import {getObject, putObject} from "../../src/s3.js";
+import {S3} from "../../src/s3.js";
 import * as chai from 'chai';
 
 let expect = chai.expect;
@@ -21,7 +21,7 @@ describe('s3 mock Tests', function() {
     it('should reject if object not there', async function() {
         let err = false;
         try{
-            await getObject("bucket", "key");
+            await S3.getObject("bucket", "key");
         } catch (e) {
             err = e;
         }
@@ -30,13 +30,13 @@ describe('s3 mock Tests', function() {
 
     it('should mock object', async function() {
         setS3Mock("t1", "t2", "hello");
-        let s3Obj = await getObject("t1", "t2");
+        let s3Obj = await S3.getObject("t1", "t2");
         expect(s3Obj).to.equal("hello");
     });
 
     it('should mock put and get object', async function() {
-        await putObject("t1", "t2", "hello world");
-        let s3Obj = await getObject("t1", "t2");
+        await S3.putObject("t1", "t2", "hello world");
+        let s3Obj = await S3.getObject("t1", "t2");
         expect(s3Obj).to.equal("hello world");
     });
 });
