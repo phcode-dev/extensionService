@@ -3,6 +3,7 @@ import {HTTP_STATUS_CODES} from "@aicore/libcommonutils";
 import {getRepoDetails, getReleaseDetails, createIssue} from "../github.js";
 import db from "../db.js";
 import {downloader} from "../utils/downloader.js";
+import {ZipUtils} from "../utils/zipUtils.js";
 import {FIELD_RELEASE_ID, RELEASE_DETAILS_TABLE, EXTENSION_SIZE_LIMIT_MB, BASE_URL,
     EXTENSION_DOWNLOAD_DIR} from "../constants.js";
 
@@ -115,6 +116,10 @@ async function _validateGithubRelease(githubReleaseTag) {
         throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
             error: `Release ${releaseRef} not found in GitHub`};
     }
+    if(release.draft || release.prerelease){
+        throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+            error: `Cannot publish ${releaseRef}: Draft or PreRelease builds cannot be published.`};
+    }
     return release;
 }
 
@@ -143,6 +148,12 @@ function _validateGitHubReleaseAssets(githubReleaseDetails, issueMessages) {
 async function _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, issueMessages) {
     const targetPath = `${EXTENSION_DOWNLOAD_DIR}/${githubReleaseTag.owner}_${githubReleaseTag.repo}_${githubReleaseTag.tag}_${extensionZipAsset.name}`;
     await downloader.downloadFile(extensionZipAsset.browser_download_url, targetPath);
+    const {packageJSON, error} = await ZipUtils.getExtensionPackageJSON(targetPath);
+    if(error) {
+        issueMessages.push(error);
+        throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+            error};
+    }
     return targetPath;
 }
 
@@ -217,7 +228,8 @@ async function _UpdateReleaseInfo(release, existingReleaseInfo) {
 export async function publishGithubRelease(request, reply) {
     let issueMessages = [],
         existingReleaseInfo = null,
-        githubReleaseTag = null;
+        githubReleaseTag = null,
+        extensionZipPath = null;
     try {
         // releaseRef of the form <org>/<repo>:refs/tags/<dfg>
         githubReleaseTag = _validateAndGetParams(request.query.releaseRef);
@@ -227,7 +239,7 @@ export async function publishGithubRelease(request, reply) {
         // at this point the release is accepted for processing
         existingReleaseInfo = await _UpdateReleaseInfo(githubReleaseTag, existingReleaseInfo);
         const extensionZipAsset = _validateGitHubReleaseAssets(newGithubReleaseDetails, issueMessages);
-        let extensionZipPath = await _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, issueMessages);
+        extensionZipPath = await _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, issueMessages);
         // we should also in the future do a virus scan, but will rely on av in users machine for the time being
         // https://developers.virustotal.com/reference/files-scan by Google Cloud is available for non-commercial apps.
         const response = {

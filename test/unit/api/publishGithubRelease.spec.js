@@ -3,6 +3,7 @@ import mockedFunctions from "../setupMocks.js";
 import * as chai from 'chai';
 import db from "../../../src/db.js";
 import {downloader} from "../../../src/utils/downloader.js";
+import {ZipUtils} from "../../../src/utils/zipUtils.js";
 import {publishGithubRelease, getPublishGithubReleaseSchema} from "../../../src/api/publishGithubRelease.js";
 import {getSimpleGetReply, getSimpleGETRequest} from '../data/simple-request.js';
 import Ajv from "ajv";
@@ -24,6 +25,9 @@ describe('unit Tests for publishGithubRelease api', function () {
         mockedFunctions.githubMock.getReleaseDetails("org", "repo", "gitTag");
         downloader.downloadFile = async function () {
             return "/path/to/file.zip";
+        };
+        ZipUtils.getExtensionPackageJSON = function () {
+            return {packageJSON: "{}"};
         };
     });
 
