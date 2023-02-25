@@ -32,30 +32,26 @@ function _initClient() {
  */
 function getObject (Bucket, Key) {
     _initClient();
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
         const getObjectCommand = new _s3.GetObjectCommand({ Bucket, Key });
+        console.log(`getting ${Bucket} : ${Key}`);
+        client.send(getObjectCommand)
+            .then((response)=>{
+                // Store all of data chunks returned from the response data stream
+                // into an array then use Array#join() to use the returned contents as a String
+                let responseDataChunks = [];
 
-        try {
-            console.log(`getting ${Bucket} : ${Key}`);
-            const response = await client.send(getObjectCommand);
+                // Handle an error while streaming the response body
+                response.Body.once('error', err => reject(err));
 
-            // Store all of data chunks returned from the response data stream
-            // into an array then use Array#join() to use the returned contents as a String
-            let responseDataChunks = [];
+                // Attach a 'data' listener to add the chunks of data to our array
+                // Each chunk is a Buffer instance
+                response.Body.on('data', chunk => responseDataChunks.push(chunk));
 
-            // Handle an error while streaming the response body
-            response.Body.once('error', err => reject(err));
-
-            // Attach a 'data' listener to add the chunks of data to our array
-            // Each chunk is a Buffer instance
-            response.Body.on('data', chunk => responseDataChunks.push(chunk));
-
-            // Once the stream has no more data, join the chunks into a string and return the string
-            response.Body.once('end', () => resolve(responseDataChunks.join('')));
-        } catch (err) {
-            // Handle the error or throw
-            return reject(err);
-        }
+                // Once the stream has no more data, join the chunks into a string and return the string
+                response.Body.once('end', () => resolve(responseDataChunks.join('')));
+            })
+            .catch(reject);
     });
 }
 
@@ -63,22 +59,19 @@ function getObject (Bucket, Key) {
 // not testing this as no time and is manually tested. If you are touching this code, manual test thoroughly
 function downloadFile(Bucket, Key, targetPath) {
     _initClient();
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
         const getObjectCommand = new _s3.GetObjectCommand({ Bucket, Key });
-
-        try {
-            console.log(`downloading file ${Bucket} : ${Key}`);
-            const response = await client.send(getObjectCommand);
-            const inputStream = response.Body;
-            const outputStream = createWriteStream(targetPath);
-            inputStream.pipe(outputStream);
-            outputStream
-                .on('error', err => reject(err))
-                .on('finish', () => resolve());
-        } catch (err) {
-            // Handle the error or throw
-            return reject(err);
-        }
+        console.log(`downloading file ${Bucket} : ${Key}`);
+        client.send(getObjectCommand)
+            .then(response=>{
+                const inputStream = response.Body;
+                const outputStream = createWriteStream(targetPath);
+                inputStream.pipe(outputStream);
+                outputStream
+                    .on('error', err => reject(err))
+                    .on('finish', () => resolve());
+            })
+            .catch(reject);
     });
 }
 
@@ -103,19 +96,14 @@ async function uploadFile(Bucket, Key, filePathToUpload){
 
 function putObject (Bucket, Key, str) {
     _initClient();
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
         const putObjectCommand = new _s3.PutObjectCommand({ Bucket, Key,
             Body: str
         });
-
-        try {
-            console.log(`putting ${Bucket} : ${Key}`);
-            const response = await client.send(putObjectCommand);
-            resolve(response);
-        } catch (err) {
-            // Handle the error or throw
-            return reject(err);
-        }
+        console.log(`putting ${Bucket} : ${Key}`);
+        client.send(putObjectCommand)
+            .then(resolve)
+            .catch(reject);
     });
 }
 
