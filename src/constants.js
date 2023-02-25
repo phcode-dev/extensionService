@@ -20,3 +20,4 @@ export const FIELD_EXTENSION_ID = "EXTENSION_ID",
     FIELD_TYPE = 'VARCHAR(128)';
 export const BASE_URL = getConfigs().baseURL;
 export const EXTENSION_DOWNLOAD_DIR = process.cwd() + "/downloads";
+export const PROCESSING_TIMEOUT_MS = 60000; // you can retry publish after a minute in processing status

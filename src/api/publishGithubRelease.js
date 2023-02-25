@@ -5,7 +5,7 @@ import db from "../db.js";
 import {downloader} from "../utils/downloader.js";
 import {ZipUtils} from "../utils/zipUtils.js";
 import {FIELD_RELEASE_ID, RELEASE_DETAILS_TABLE, EXTENSION_SIZE_LIMIT_MB, BASE_URL,
-    EXTENSION_DOWNLOAD_DIR} from "../constants.js";
+    EXTENSION_DOWNLOAD_DIR, PROCESSING_TIMEOUT_MS} from "../constants.js";
 
 const RELEASE_STATUS_PROCESSING = "processing";
 
@@ -91,8 +91,12 @@ async function _validateAlreadyReleased(release) {
             error: `Release ${releaseRef} already published!`};
     }
     if(existingRelease?.status === RELEASE_STATUS_PROCESSING){
-        throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
-            error: `Release ${releaseRef} is already being processed.`};
+        if((Date.now() - existingRelease.lastUpdatedDateUTC) > PROCESSING_TIMEOUT_MS){
+            console.log(`Retrying release ${releaseRef} as process timeout exceeded.`);
+        } else {
+            throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+                error: `Release ${releaseRef} is already being processed. Please wait or retry after ${PROCESSING_TIMEOUT_MS/1000} Seconds`};
+        }
     }
     return {
         repoDetails: repo,
@@ -114,11 +118,8 @@ async function _validateGithubRelease(githubReleaseTag) {
         // this need not be reported in a user issue as it is unlikely to happen.
         // we call this api via github on-released action
         throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+            updatePublishErrors: true,
             error: `Release ${releaseRef} not found in GitHub`};
-    }
-    if(release.draft || release.prerelease){
-        throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
-            error: `Cannot publish ${releaseRef}: Draft or PreRelease builds cannot be published.`};
     }
     return release;
 }
@@ -134,12 +135,14 @@ function _validateGitHubReleaseAssets(githubReleaseDetails, issueMessages) {
         let userMessage = "Release does not contain required `extension.zip` file attached.";
         issueMessages.push(userMessage);
         throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+            updatePublishErrors: true,
             error: userMessage};
     }
     if(extensionZipAsset.size > EXTENSION_SIZE_LIMIT_MB*1024*1024){
         let userMessage = `Attached \`extension.zip\` file should be smaller than ${EXTENSION_SIZE_LIMIT_MB}MB`;
         issueMessages.push(userMessage);
         throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+            updatePublishErrors: true,
             error: userMessage};
     }
     return extensionZipAsset;
@@ -152,6 +155,7 @@ async function _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAs
     if(error) {
         issueMessages.push(error);
         throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+            updatePublishErrors: true,
             error};
     }
     return targetPath;
@@ -236,8 +240,13 @@ export async function publishGithubRelease(request, reply) {
         const {repoDetails, existingRelease} = await _validateAlreadyReleased(githubReleaseTag);
         existingReleaseInfo = existingRelease;
         const newGithubReleaseDetails = await _validateGithubRelease(githubReleaseTag);
-        // at this point the release is accepted for processing
+        // at this point the release is accepted for processing. make status/issue entries in release table/GitHub
         existingReleaseInfo = await _UpdateReleaseInfo(githubReleaseTag, existingReleaseInfo);
+        if(newGithubReleaseDetails.draft || newGithubReleaseDetails.prerelease){
+            issueMessages.push(`Draft or PreRelease builds cannot be published.`);
+            throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+                error: `Draft or PreRelease builds cannot be published.`};
+        }
         const extensionZipAsset = _validateGitHubReleaseAssets(newGithubReleaseDetails, issueMessages);
         extensionZipPath = await _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, issueMessages);
         // we should also in the future do a virus scan, but will rely on av in users machine for the time being
@@ -248,7 +257,9 @@ export async function publishGithubRelease(request, reply) {
         return response;
     } catch (err) {
         console.error("Error while publishGithubRelease ", err);
-        _updatePublishErrors(githubReleaseTag, issueMessages); // dont await, background task
+        if(err.updatePublishErrors) {
+            _updatePublishErrors(githubReleaseTag, issueMessages); // dont await, background task
+        }
         if(err.status){
             reply.status(err.status);
             return err.error;
