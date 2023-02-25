@@ -2,7 +2,11 @@
 import {HTTP_STATUS_CODES} from "@aicore/libcommonutils";
 import {getRepoDetails, getReleaseDetails, createIssue} from "../github.js";
 import db from "../db.js";
-import {FIELD_RELEASE_ID, RELEASE_DETAILS_TABLE, EXTENSION_SIZE_LIMIT_MB, BASE_URL} from "../constants.js";
+import {downloader} from "../utils/downloader.js";
+import {FIELD_RELEASE_ID, RELEASE_DETAILS_TABLE, EXTENSION_SIZE_LIMIT_MB, BASE_URL,
+    EXTENSION_DOWNLOAD_DIR} from "../constants.js";
+
+const RELEASE_STATUS_PROCESSING = "processing";
 
 const schema = {
     schema: {
@@ -60,12 +64,7 @@ function _validateAndGetParams(releaseRef) {
     };
 }
 
-async function _validateAlreadyReleased(release) {
-    let repo = await getRepoDetails(release.owner, release.repo);
-    if(!repo) {
-        throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
-            error: `Repo ${release.owner}/${release.repo} doesnt exist or is not accessible.`};
-    }
+async function _getReleaseInfo(release) {
     const releaseRef = `${release.owner}/${release.repo}/${release.tag}`;
     const queryObj = {};
     queryObj[FIELD_RELEASE_ID] = releaseRef;
@@ -75,9 +74,24 @@ async function _validateAlreadyReleased(release) {
         throw new Error("Error getting release details from db: " + releaseRef);
     }
     existingRelease = existingRelease.documents.length === 1 ? existingRelease.documents[0] : null;
+    return existingRelease;
+}
+
+async function _validateAlreadyReleased(release) {
+    let repo = await getRepoDetails(release.owner, release.repo);
+    const releaseRef = `${release.owner}/${release.repo}/${release.tag}`;
+    if(!repo) {
+        throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+            error: `Repo ${release.owner}/${release.repo} doesnt exist or is not accessible.`};
+    }
+    const existingRelease = await _getReleaseInfo(release);
     if(existingRelease?.published){
         throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
             error: `Release ${releaseRef} already published!`};
+    }
+    if(existingRelease?.status === RELEASE_STATUS_PROCESSING){
+        throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+            error: `Release ${releaseRef} is already being processed.`};
     }
     return {
         repoDetails: repo,
@@ -104,7 +118,7 @@ async function _validateGithubRelease(githubReleaseTag) {
     return release;
 }
 
-function _validateExtensionZip(githubReleaseDetails, issueMessages) {
+function _validateGitHubReleaseAssets(githubReleaseDetails, issueMessages) {
     let extensionZipAsset;
     for(let asset of githubReleaseDetails.assets){
         if(asset.name === 'extension.zip'){
@@ -123,39 +137,79 @@ function _validateExtensionZip(githubReleaseDetails, issueMessages) {
         throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
             error: userMessage};
     }
+    return extensionZipAsset;
+}
+
+async function _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, issueMessages) {
+    const targetPath = `${EXTENSION_DOWNLOAD_DIR}/${githubReleaseTag.owner}_${githubReleaseTag.repo}_${githubReleaseTag.tag}_${extensionZipAsset.name}`;
+    await downloader.downloadFile(extensionZipAsset.browser_download_url, targetPath);
+    return targetPath;
 }
 
 async function _createGithubIssue(release) {
     let {number} = await createIssue(release.owner, release.repo,
-        `[Phcode.dev Bot] Publishing Release ${release.tag} to Extension Store`,
+        `[Phcode.dev Bot] Publishing Release \`${release.tag}\` to Extension Store`,
 `Thank you for contributing to [phcode.dev](https://phcode.dev) extension store.\n
-[Please track extension/theme publish status by clicking this link.](${BASE_URL}/www/publish/?owner=${release.owner}&repo=${release.repo}&tag=${release.tag})`);
+[Please track extension/theme publish status by clicking this link.](${BASE_URL}/www/publish/?owner=${release.owner}&repo=${release.repo}&tag=${release.tag})\n
+You may close this issue at any time.`);
     return number;
 }
 
-async function _updatePublishErrors(release, existingReleaseInfo, issueMessages) {
+async function _updatePublishErrors(release, issueMessages) {
+    try{
+        const existingReleaseInfo = await _getReleaseInfo(release);
+        const releaseRef = `${release.owner}/${release.repo}/${release.tag}`;
+        console.log(`existing release ${releaseRef} found: `, existingReleaseInfo);
+        existingReleaseInfo.errors = issueMessages;
+        existingReleaseInfo.status = "failed";
+        existingReleaseInfo.lastUpdatedDateUTC = Date.now();
+        if(!existingReleaseInfo.githubIssue){
+            existingReleaseInfo.githubIssue = await _createGithubIssue(release);
+        }
+        await db.update(RELEASE_DETAILS_TABLE, existingReleaseInfo.documentId,
+            existingReleaseInfo);
+    } catch (e) {
+        console.error("Error while putting error status of release. ", e);
+        // silently bail out
+    }
+}
+
+/**
+ * create github issue if not already created, creates or updates release entry in release table to track
+ * @param release
+ * @param existingReleaseInfo
+ * @private
+ */
+async function _UpdateReleaseInfo(release, existingReleaseInfo) {
     try{
         const releaseRef = `${release.owner}/${release.repo}/${release.tag}`;
         if(existingReleaseInfo && existingReleaseInfo.documentId) {
             console.log(`existing release ${releaseRef} found: `, existingReleaseInfo);
-            existingReleaseInfo.errors = issueMessages;
+            existingReleaseInfo.errors = [];
+            existingReleaseInfo.status = RELEASE_STATUS_PROCESSING;
+            existingReleaseInfo.lastUpdatedDateUTC = Date.now();
             if(!existingReleaseInfo.githubIssue){
                 existingReleaseInfo.githubIssue = await _createGithubIssue(release);
             }
             await db.update(RELEASE_DETAILS_TABLE, existingReleaseInfo.documentId,
                 existingReleaseInfo);
+            return existingReleaseInfo;
         } else {
-            console.log(`updating new release ${releaseRef} error messages: `, issueMessages);
+            console.log(`updating new release ${releaseRef} details: `);
             let releaseInfo = {
-                errors: issueMessages,
+                errors: [],
+                status: RELEASE_STATUS_PROCESSING,
+                lastUpdatedDateUTC: Date.now(),
                 githubIssue: await _createGithubIssue(release)
             };
             releaseInfo[FIELD_RELEASE_ID] = releaseRef;
             console.log(`Putting release ${releaseRef} details to db`,
                 await db.put(RELEASE_DETAILS_TABLE, releaseInfo));
+            return  await _getReleaseInfo(release);
         }
     } catch (e) {
         console.error("Error while putting error status of release. ", e);
+        return release;
         // silently bail out
     }
 }
@@ -169,21 +223,24 @@ export async function publishGithubRelease(request, reply) {
         githubReleaseTag = _validateAndGetParams(request.query.releaseRef);
         const {repoDetails, existingRelease} = await _validateAlreadyReleased(githubReleaseTag);
         existingReleaseInfo = existingRelease;
-        const githubReleaseDetails = await _validateGithubRelease(githubReleaseTag);
-        await _validateExtensionZip(githubReleaseDetails, issueMessages);
+        const newGithubReleaseDetails = await _validateGithubRelease(githubReleaseTag);
+        // at this point the release is accepted for processing
+        existingReleaseInfo = await _UpdateReleaseInfo(githubReleaseTag, existingReleaseInfo);
+        const extensionZipAsset = _validateGitHubReleaseAssets(newGithubReleaseDetails, issueMessages);
+        let extensionZipPath = await _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, issueMessages);
+        // we should also in the future do a virus scan, but will rely on av in users machine for the time being
+        // https://developers.virustotal.com/reference/files-scan by Google Cloud is available for non-commercial apps.
         const response = {
             message: "done"
         };
         return response;
     } catch (err) {
-        if(issueMessages.length){
-            _updatePublishErrors(githubReleaseTag, existingReleaseInfo, issueMessages);
-        }
+        console.error("Error while publishGithubRelease ", err);
+        _updatePublishErrors(githubReleaseTag, issueMessages); // dont await, background task
         if(err.status){
             reply.status(err.status);
             return err.error;
         }
-        console.error("Error while publishGithubRelease ", err);
         throw new Error("Oops, something went wrong while publishGithubRelease");
     }
 }

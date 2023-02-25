@@ -11,6 +11,9 @@ src/.app.json
 src/app.json
 src/testConfig.json
 
+# downloaded files
+downloads
+
 # IDE exclusions
 .idea
 
