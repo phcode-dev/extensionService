@@ -19,3 +19,4 @@ export const FIELD_EXTENSION_ID = "EXTENSION_ID",
     FIELD_RELEASE_ID = "RELEASE_ID",
     FIELD_TYPE = 'VARCHAR(128)';
 export const BASE_URL = getConfigs().baseURL;
+export const EXTENSION_DOWNLOAD_DIR = process.cwd() + "/downloads";
