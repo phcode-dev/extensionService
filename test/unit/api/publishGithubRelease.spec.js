@@ -6,6 +6,7 @@ import {downloader} from "../../../src/utils/downloader.js";
 import {ZipUtils} from "../../../src/utils/zipUtils.js";
 import {publishGithubRelease, getPublishGithubReleaseSchema} from "../../../src/api/publishGithubRelease.js";
 import {getSimpleGetReply, getSimpleGETRequest} from '../data/simple-request.js';
+import {VALID_PACKAGE_JSON} from "../data/packagejson.js";
 import Ajv from "ajv";
 import {initGitHubClient} from "../../../src/github.js";
 import {EXTENSION_SIZE_LIMIT_MB} from "../../../src/constants.js";
@@ -27,7 +28,7 @@ describe('unit Tests for publishGithubRelease api', function () {
             return "/path/to/file.zip";
         };
         ZipUtils.getExtensionPackageJSON = function () {
-            return {packageJSON: "{}"};
+            return {packageJSON: VALID_PACKAGE_JSON};
         };
     });
 

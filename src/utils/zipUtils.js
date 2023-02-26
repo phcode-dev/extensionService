@@ -6,7 +6,7 @@ import StreamZipAsync from 'node-stream-zip';
  * Resolves the contents of the package.json file if a valid package.json file is found in extension. Else rejects.
  * package.json can be in the root zip dir as "package.json" or in a single child sub dir like "extension/package.json"
  * @param zipPath
- * @return {Promise<unknown>}
+ * @return {Promise<{packageJSON:string, error: string}>}
  */
 function getExtensionPackageJSON(zipPath) {
     return new Promise((resolve)=>{
@@ -22,11 +22,21 @@ function getExtensionPackageJSON(zipPath) {
                     packageJSONFilePaths[entry.name] = entry;
                 }
             }
+            function _resolvePackageJson(binData) {
+                try{
+                    let jsonObject = JSON.parse(binData.toString());
+                    resolve({packageJSON: jsonObject});
+                } catch (e) {
+                    console.error("JSON error reading package.json: ", e);
+                    resolve({error: "JSON error: Please check if package.json if valid JSON."});
+                }
+            }
+
             // if package.json is in the root folder ni zip, return that
             if(packageJSONFilePaths['package.json']) {
                 zip.entryData('package.json')
                     .then(data => {
-                        resolve({packageJSON: data.toString()});
+                        _resolvePackageJson(data);
                     })
                     .catch(()=>{
                         resolve({error: "Invalid Zip file. Could not find package.json from the extension zip"});
@@ -48,7 +58,7 @@ function getExtensionPackageJSON(zipPath) {
             }
             zip.entryData(`${subDirectoriesOfRoot[0]}/package.json`)
                 .then(data => {
-                    resolve({packageJSON: data.toString()});
+                    _resolvePackageJson(data);
                 })
                 .catch(()=>{
                     resolve({error: "Invalid Zip file. Could not find package.json from the extension zip"});
