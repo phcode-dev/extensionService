@@ -4,8 +4,10 @@ import {getRepoDetails, getReleaseDetails, createIssue} from "../github.js";
 import db from "../db.js";
 import {downloader} from "../utils/downloader.js";
 import {ZipUtils} from "../utils/zipUtils.js";
-import {FIELD_RELEASE_ID, RELEASE_DETAILS_TABLE, EXTENSION_SIZE_LIMIT_MB, BASE_URL,
-    EXTENSION_DOWNLOAD_DIR, PROCESSING_TIMEOUT_MS} from "../constants.js";
+import {
+    FIELD_RELEASE_ID, RELEASE_DETAILS_TABLE, EXTENSION_SIZE_LIMIT_MB, BASE_URL,
+    EXTENSION_DOWNLOAD_DIR, PROCESSING_TIMEOUT_MS, EXTENSIONS_DETAILS_TABLE, FIELD_EXTENSION_ID
+} from "../constants.js";
 
 const RELEASE_STATUS_PROCESSING = "processing";
 
@@ -148,6 +150,26 @@ function _validateGitHubReleaseAssets(githubReleaseDetails, issueMessages) {
     return extensionZipAsset;
 }
 
+async function _validateExtensionPackageJson(githubReleaseTag, packageJSON, issueMessages) {
+    const queryObj = {};
+    const newOwner = `github:${githubReleaseTag.owner}`;
+    const releaseRef = `${githubReleaseTag.owner}/${githubReleaseTag.repo}/${githubReleaseTag.tag}`;
+    queryObj[FIELD_EXTENSION_ID] = packageJSON.name;
+    let registryPKG = await db.getFromIndex(EXTENSIONS_DETAILS_TABLE, queryObj);
+    if(!registryPKG.isSuccess){
+        // unexpected error
+        throw new Error("Error getting extensionPKG details from db: " + releaseRef);
+    }
+    registryPKG = registryPKG.documents.length === 1 ? registryPKG.documents[0] : null;
+    if(registryPKG && registryPKG.owner !== newOwner) {
+        let error = `Extension of the same name "${packageJSON.name}" already exists (owned by https://github.com/${registryPKG.owner.split(":")[1]}).`;
+        issueMessages.push(error);
+        throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+            updatePublishErrors: true,
+            error};
+    }
+}
+
 async function _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, issueMessages) {
     const targetPath = `${EXTENSION_DOWNLOAD_DIR}/${githubReleaseTag.owner}_${githubReleaseTag.repo}_${githubReleaseTag.tag}_${extensionZipAsset.name}`;
     await downloader.downloadFile(extensionZipAsset.browser_download_url, targetPath);
@@ -175,6 +197,7 @@ async function _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAs
             updatePublishErrors: true,
             error};
     }
+    await _validateExtensionPackageJson(githubReleaseTag, packageJSON, issueMessages);
     return targetPath;
 }
 
