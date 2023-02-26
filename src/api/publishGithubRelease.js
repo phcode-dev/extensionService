@@ -151,8 +151,25 @@ function _validateGitHubReleaseAssets(githubReleaseDetails, issueMessages) {
 async function _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, issueMessages) {
     const targetPath = `${EXTENSION_DOWNLOAD_DIR}/${githubReleaseTag.owner}_${githubReleaseTag.repo}_${githubReleaseTag.tag}_${extensionZipAsset.name}`;
     await downloader.downloadFile(extensionZipAsset.browser_download_url, targetPath);
-    const {packageJSON, error} = await ZipUtils.getExtensionPackageJSON(targetPath);
+    let {packageJSON, error} = await ZipUtils.getExtensionPackageJSON(targetPath);
     if(error) {
+        issueMessages.push(error);
+        throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+            updatePublishErrors: true,
+            error};
+    }
+    let requiredParams = ["name", "title", "description", "homepage", "version", "author", "license"];
+    let missingParams = [];
+    for(let param of requiredParams){
+        if(!packageJSON[param]){
+            missingParams.push(param);
+        }
+    }
+    if(!packageJSON?.engines?.brackets){
+        missingParams.push(`"engines":{"brackets":<version Eg. ">=0.34.0"}>`);
+    }
+    if(missingParams.length){
+        error = "Required parameters missing in package.json: " + missingParams;
         issueMessages.push(error);
         throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
             updatePublishErrors: true,
