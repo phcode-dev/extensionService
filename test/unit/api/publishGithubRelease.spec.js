@@ -7,6 +7,7 @@ import {ZipUtils} from "../../../src/utils/zipUtils.js";
 import {publishGithubRelease, getPublishGithubReleaseSchema} from "../../../src/api/publishGithubRelease.js";
 import {getSimpleGetReply, getSimpleGETRequest} from '../data/simple-request.js';
 import {VALID_PACKAGE_JSON} from "../data/packagejson.js";
+import registryJSON from "../data/registry.js";
 import Ajv from "ajv";
 import {initGitHubClient} from "../../../src/github.js";
 import {EXTENSION_SIZE_LIMIT_MB} from "../../../src/constants.js";
