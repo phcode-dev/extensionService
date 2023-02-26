@@ -4,6 +4,7 @@ import {getRepoDetails, getReleaseDetails, createIssue} from "../github.js";
 import db from "../db.js";
 import {downloader} from "../utils/downloader.js";
 import {ZipUtils} from "../utils/zipUtils.js";
+import {valid, lte} from "semver";
 import {
     FIELD_RELEASE_ID, RELEASE_DETAILS_TABLE, EXTENSION_SIZE_LIMIT_MB, BASE_URL,
     EXTENSION_DOWNLOAD_DIR, PROCESSING_TIMEOUT_MS, EXTENSIONS_DETAILS_TABLE, FIELD_EXTENSION_ID
@@ -161,9 +162,36 @@ async function _validateExtensionPackageJson(githubReleaseTag, packageJSON, issu
         throw new Error("Error getting extensionPKG details from db: " + releaseRef);
     }
     registryPKG = registryPKG.documents.length === 1 ? registryPKG.documents[0] : null;
+    let error = "";
     if(registryPKG && registryPKG.owner !== newOwner) {
-        let error = `Extension of the same name "${packageJSON.name}" already exists (owned by https://github.com/${registryPKG.owner.split(":")[1]}).`;
-        issueMessages.push(error);
+        let errorMsg = `Extension of the same name "${packageJSON.name}" already exists (owned by https://github.com/${registryPKG.owner.split(":")[1]}). Please choose a different extension name.`;
+        error = error + errorMsg;
+        issueMessages.push(errorMsg);
+        throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+            updatePublishErrors: true,
+            error};
+    }
+    if(!valid(packageJSON.version)) {
+        let errorMsg = `Invalid package version "${packageJSON.version}" in zip.`;
+        error = error + `\n${errorMsg}`;
+        issueMessages.push(errorMsg);
+    }
+    if(registryPKG) {
+        for(let versionInfo of registryPKG.versions){
+            if(versionInfo.version === packageJSON.version){
+                let errorMsg = `Package version "${packageJSON.version}" already published on ${versionInfo.published}. Please update version number to above ${registryPKG.metadata.version}.`;
+                error = error + `\n${errorMsg}`;
+                issueMessages.push(errorMsg);
+                break;
+            }
+        }
+        if(lte(packageJSON.version, registryPKG.metadata.version)){
+            let errorMsg = `Package version should be greater than ${registryPKG.metadata.version}, but received "${packageJSON.version}".`;
+            error = error + `\n${errorMsg}`;
+            issueMessages.push(errorMsg);
+        }
+    }
+    if(error){
         throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
             updatePublishErrors: true,
             error};
