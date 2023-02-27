@@ -25,6 +25,7 @@ describe('unit Tests for publishGithubRelease api', function () {
         mockedFunctions.githubMock.reset();
         mockedFunctions.githubMock.getRepoDetails("org", "repo");
         mockedFunctions.githubMock.getReleaseDetails("org", "repo", "gitTag");
+        mockedFunctions.githubMock.getOrgDetails("org");
         downloader.downloadFile = async function () {
             return "/path/to/file.zip";
         };

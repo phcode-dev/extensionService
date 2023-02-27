@@ -18,6 +18,7 @@ function downloadFile(url, downloadFilePath) {
         }
         const file = fs.createWriteStream(downloadFilePath);
         follow.https.get(url, function(response) {
+            console.log("response code", response.code);
             response.pipe(file);
             file.on('finish', function() {
                 console.log("Download complete ", url, downloadFilePath);

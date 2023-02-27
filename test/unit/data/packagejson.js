@@ -60,5 +60,8 @@ export const REGISTRY_PACKAGE_JSON = {
         "20180909": 103,
         "20180910": 85,
         "20180911": 10
-    }
+    },
+    "gihubStars": 482,
+    "ownerRepo": "https://github.com/louiealmeda/brackets-angular-moduler",
+    "ownershipVerifiedByGitHub":["https://emmet.io"]
 };
