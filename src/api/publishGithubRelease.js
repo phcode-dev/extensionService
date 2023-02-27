@@ -1,6 +1,6 @@
 // Refer https://json-schema.org/understanding-json-schema/index.html
 import {HTTP_STATUS_CODES} from "@aicore/libcommonutils";
-import {getRepoDetails, getReleaseDetails, createIssue} from "../github.js";
+import {getRepoDetails, getReleaseDetails, createIssue, getOrgDetails} from "../github.js";
 import db from "../db.js";
 import {downloader} from "../utils/downloader.js";
 import {ZipUtils} from "../utils/zipUtils.js";
@@ -151,7 +151,7 @@ function _validateGitHubReleaseAssets(githubReleaseDetails, issueMessages) {
     return extensionZipAsset;
 }
 
-async function _validateExtensionPackageJson(githubReleaseTag, packageJSON, issueMessages) {
+async function _validateExtensionPackageJson(githubReleaseTag, packageJSON, repoDetails, issueMessages) {
     const queryObj = {};
     const newOwner = `github:${githubReleaseTag.owner}`;
     const releaseRef = `${githubReleaseTag.owner}/${githubReleaseTag.repo}/${githubReleaseTag.tag}`;
@@ -196,9 +196,33 @@ async function _validateExtensionPackageJson(githubReleaseTag, packageJSON, issu
             updatePublishErrors: true,
             error};
     }
+    let org = await getOrgDetails(githubReleaseTag.owner);
+    let ownershipVerifiedByGitHub = null;
+    if(org && org.is_verified && org.blog){
+        ownershipVerifiedByGitHub = [org.blog];
+    }
+    // now create the new registry package json
+    registryPKG = registryPKG || {
+        "versions": [],
+        "totalDownloads": 0,
+        "recent": {}
+    };
+    registryPKG.metadata= packageJSON;
+    registryPKG.owner= `github:${githubReleaseTag.owner}`;
+    registryPKG.gihubStars = repoDetails.stargazers_count;
+    registryPKG.ownerRepo = `https://github.com/${githubReleaseTag.owner}/${githubReleaseTag.repo}`;
+    registryPKG.ownershipVerifiedByGitHub = ownershipVerifiedByGitHub;
+    registryPKG.versions.push({
+        "version": packageJSON.version,
+        "published": new Date().toISOString(),
+        "brackets": packageJSON.engines.brackets,
+        "downloads": 0
+    });
+
+    console.log(registryPKG);
 }
 
-async function _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, issueMessages) {
+async function _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, repoDetails, issueMessages) {
     const targetPath = `${EXTENSION_DOWNLOAD_DIR}/${githubReleaseTag.owner}_${githubReleaseTag.repo}_${githubReleaseTag.tag}_${extensionZipAsset.name}`;
     await downloader.downloadFile(extensionZipAsset.browser_download_url, targetPath);
     let {packageJSON, error} = await ZipUtils.getExtensionPackageJSON(targetPath);
@@ -225,7 +249,7 @@ async function _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAs
             updatePublishErrors: true,
             error};
     }
-    await _validateExtensionPackageJson(githubReleaseTag, packageJSON, issueMessages);
+    await _validateExtensionPackageJson(githubReleaseTag, packageJSON, repoDetails, issueMessages);
     return targetPath;
 }
 
@@ -316,7 +340,7 @@ export async function publishGithubRelease(request, reply) {
                 error: `Draft or PreRelease builds cannot be published.`};
         }
         const extensionZipAsset = _validateGitHubReleaseAssets(newGithubReleaseDetails, issueMessages);
-        extensionZipPath = await _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, issueMessages);
+        extensionZipPath = await _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, repoDetails, issueMessages);
         // we should also in the future do a virus scan, but will rely on av in users machine for the time being
         // https://developers.virustotal.com/reference/files-scan by Google Cloud is available for non-commercial apps.
         const response = {

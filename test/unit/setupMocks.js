@@ -7,9 +7,16 @@ let expect = chai.expect;
 
 let setupDone = false;
 
-let getRepoDetailsResponses = {},
+let getOrgDetailsResponses = {},
+    getRepoDetailsResponses = {},
     getReleaseDetailsResponses = {};
 async function githubRequestFnMock(url, options) {
+    if(url.startsWith("GET /orgs/")){ // getOrgDetails api
+        if(getOrgDetailsResponses[`${options.owner}`]) {
+            return getOrgDetailsResponses[`${options.owner}`];
+        }
+        throw {status: 404};
+    }
     if(url.startsWith("GET /repos/") && !url.includes("/releases/tags/")){ // getRepoDetails api
         if(getRepoDetailsResponses[`${options.owner}/${options.repo}`]) {
             return getRepoDetailsResponses[`${options.owner}/${options.repo}`];
@@ -123,6 +130,19 @@ export function getRepoDetails(org, repo) {
     };
 }
 
+export function getOrgDetails(org) {
+    mockedFunctions.githubRequestFnMock = githubRequestFnMock;
+    getOrgDetailsResponses[`${org}`] = {
+        data: {
+            name: org,
+            company: org,
+            blog: `https://org`,
+            is_verified: true,
+            html_url: 'https://github.com/org'
+        }
+    };
+}
+
 export function getReleaseDetails(owner, repo, tag, assetName = 'extension.zip', size = 1024) {
     mockedFunctions.githubRequestFnMock = githubRequestFnMock;
     getReleaseDetailsResponses[`${owner}/${repo}/${tag}`] = {
@@ -149,6 +169,7 @@ let mockedFunctions = {
     s3MockedKeyValues: {},
     githubRequestFnMock, // you should almost always use githubMock instead of githubRequestFnMock
     githubMock: {
+        getOrgDetails,
         getRepoDetails,
         getReleaseDetails,
         reset: function () {
