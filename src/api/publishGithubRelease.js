@@ -4,11 +4,13 @@ import {getRepoDetails, getReleaseDetails, createIssue, getOrgDetails} from "../
 import db from "../db.js";
 import {downloader} from "../utils/downloader.js";
 import {ZipUtils} from "../utils/zipUtils.js";
-import {valid, lte} from "semver";
+import {valid, lte, clean} from "semver";
 import {
     FIELD_RELEASE_ID, RELEASE_DETAILS_TABLE, EXTENSION_SIZE_LIMIT_MB, BASE_URL,
-    EXTENSION_DOWNLOAD_DIR, PROCESSING_TIMEOUT_MS, EXTENSIONS_DETAILS_TABLE, FIELD_EXTENSION_ID
+    EXTENSION_DOWNLOAD_DIR, PROCESSING_TIMEOUT_MS, EXTENSIONS_DETAILS_TABLE, FIELD_EXTENSION_ID, EXTENSIONS_BUCKET
 } from "../constants.js";
+import fs from "fs";
+import {S3} from "../s3.js";
 
 const RELEASE_STATUS_PROCESSING = "processing";
 
@@ -156,15 +158,15 @@ async function _validateExtensionPackageJson(githubReleaseTag, packageJSON, repo
     const newOwner = `github:${githubReleaseTag.owner}`;
     const releaseRef = `${githubReleaseTag.owner}/${githubReleaseTag.repo}/${githubReleaseTag.tag}`;
     queryObj[FIELD_EXTENSION_ID] = packageJSON.name;
-    let registryPKG = await db.getFromIndex(EXTENSIONS_DETAILS_TABLE, queryObj);
-    if(!registryPKG.isSuccess){
+    let registryPKGJSON = await db.getFromIndex(EXTENSIONS_DETAILS_TABLE, queryObj);
+    if(!registryPKGJSON.isSuccess){
         // unexpected error
         throw new Error("Error getting extensionPKG details from db: " + releaseRef);
     }
-    registryPKG = registryPKG.documents.length === 1 ? registryPKG.documents[0] : null;
+    registryPKGJSON = registryPKGJSON.documents.length === 1 ? registryPKGJSON.documents[0] : null;
     let error = "";
-    if(registryPKG && registryPKG.owner !== newOwner) {
-        let errorMsg = `Extension of the same name "${packageJSON.name}" already exists (owned by https://github.com/${registryPKG.owner.split(":")[1]}). Please choose a different extension name.`;
+    if(registryPKGJSON && registryPKGJSON.owner !== newOwner) {
+        let errorMsg = `Extension of the same name "${packageJSON.name}" already exists (owned by https://github.com/${registryPKGJSON.owner.split(":")[1]}). Please choose a different extension name.`;
         error = error + errorMsg;
         issueMessages.push(errorMsg);
         throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
@@ -176,17 +178,18 @@ async function _validateExtensionPackageJson(githubReleaseTag, packageJSON, repo
         error = error + `\n${errorMsg}`;
         issueMessages.push(errorMsg);
     }
-    if(registryPKG) {
-        for(let versionInfo of registryPKG.versions){
+    packageJSON.version = clean(packageJSON.version); // '  =v1.2.3   ' ->  '1.2.3'
+    if(registryPKGJSON) {
+        for(let versionInfo of registryPKGJSON.versions){
             if(versionInfo.version === packageJSON.version){
-                let errorMsg = `Package version "${packageJSON.version}" already published on ${versionInfo.published}. Please update version number to above ${registryPKG.metadata.version}.`;
+                let errorMsg = `Package version "${packageJSON.version}" already published on ${versionInfo.published}. Please update version number to above ${registryPKGJSON.metadata.version}.`;
                 error = error + `\n${errorMsg}`;
                 issueMessages.push(errorMsg);
                 break;
             }
         }
-        if(lte(packageJSON.version, registryPKG.metadata.version)){
-            let errorMsg = `Package version should be greater than ${registryPKG.metadata.version}, but received "${packageJSON.version}".`;
+        if(lte(packageJSON.version, registryPKGJSON.metadata.version)){
+            let errorMsg = `Package version should be greater than ${registryPKGJSON.metadata.version}, but received "${packageJSON.version}".`;
             error = error + `\n${errorMsg}`;
             issueMessages.push(errorMsg);
         }
@@ -202,30 +205,30 @@ async function _validateExtensionPackageJson(githubReleaseTag, packageJSON, repo
         ownershipVerifiedByGitHub = [org.blog];
     }
     // now create the new registry package json
-    registryPKG = registryPKG || {
+    registryPKGJSON = registryPKGJSON || {
         "versions": [],
         "totalDownloads": 0,
         "recent": {}
     };
-    registryPKG.metadata= packageJSON;
-    registryPKG.owner= `github:${githubReleaseTag.owner}`;
-    registryPKG.gihubStars = repoDetails.stargazers_count;
-    registryPKG.ownerRepo = `https://github.com/${githubReleaseTag.owner}/${githubReleaseTag.repo}`;
-    registryPKG.ownershipVerifiedByGitHub = ownershipVerifiedByGitHub;
-    registryPKG.versions.push({
-        "version": packageJSON.version,
+    registryPKGJSON.metadata= packageJSON;
+    registryPKGJSON.owner= `github:${githubReleaseTag.owner}`;
+    registryPKGJSON.gihubStars = repoDetails.stargazers_count;
+    registryPKGJSON.ownerRepo = `https://github.com/${githubReleaseTag.owner}/${githubReleaseTag.repo}`;
+    registryPKGJSON.ownershipVerifiedByGitHub = ownershipVerifiedByGitHub;
+    registryPKGJSON.versions.push({
+        "version": clean(packageJSON.version),
         "published": new Date().toISOString(),
         "brackets": packageJSON.engines.brackets,
         "downloads": 0
     });
 
-    console.log(registryPKG);
+    return registryPKGJSON;
 }
 
 async function _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, repoDetails, issueMessages) {
-    const targetPath = `${EXTENSION_DOWNLOAD_DIR}/${githubReleaseTag.owner}_${githubReleaseTag.repo}_${githubReleaseTag.tag}_${extensionZipAsset.name}`;
-    await downloader.downloadFile(extensionZipAsset.browser_download_url, targetPath);
-    let {packageJSON, error} = await ZipUtils.getExtensionPackageJSON(targetPath);
+    const extensionZipPath = `${EXTENSION_DOWNLOAD_DIR}/${githubReleaseTag.owner}_${githubReleaseTag.repo}_${githubReleaseTag.tag}_${extensionZipAsset.name}`;
+    await downloader.downloadFile(extensionZipAsset.browser_download_url, extensionZipPath);
+    let {packageJSON, error} = await ZipUtils.getExtensionPackageJSON(extensionZipPath);
     if(error) {
         issueMessages.push(error);
         throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
@@ -249,8 +252,8 @@ async function _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAs
             updatePublishErrors: true,
             error};
     }
-    await _validateExtensionPackageJson(githubReleaseTag, packageJSON, repoDetails, issueMessages);
-    return targetPath;
+    const registryPKGJSON = await _validateExtensionPackageJson(githubReleaseTag, packageJSON, repoDetails, issueMessages);
+    return {extensionZipPath, registryPKGJSON};
 }
 
 async function _createGithubIssue(release) {
@@ -340,9 +343,20 @@ export async function publishGithubRelease(request, reply) {
                 error: `Draft or PreRelease builds cannot be published.`};
         }
         const extensionZipAsset = _validateGitHubReleaseAssets(newGithubReleaseDetails, issueMessages);
-        extensionZipPath = await _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, repoDetails, issueMessages);
+        const {extensionZipPath, registryPKGJSON}=
+            await _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, repoDetails, issueMessages);
         // we should also in the future do a virus scan, but will rely on av in users machine for the time being
         // https://developers.virustotal.com/reference/files-scan by Google Cloud is available for non-commercial apps.
+
+        await S3.uploadFile(EXTENSIONS_BUCKET,
+            `extensions/${registryPKGJSON.metadata.name}-${registryPKGJSON.metadata.version}.zip`,
+            extensionZipPath);
+
+        // cleanup
+        setTimeout(()=>{
+            fs.unlink(extensionZipPath, console.error); // cleanup after we return. (But we don't check the result)
+        }, 1000);
+
         const response = {
             message: "done"
         };
@@ -351,6 +365,9 @@ export async function publishGithubRelease(request, reply) {
         console.error("Error while publishGithubRelease ", err);
         if(err.updatePublishErrors) {
             _updatePublishErrors(githubReleaseTag, issueMessages); // dont await, background task
+        }
+        if(extensionZipPath){
+            fs.unlink(extensionZipPath, console.error); // cleanup after we return. (But we don't check the result)
         }
         if(err.status){
             reply.status(err.status);

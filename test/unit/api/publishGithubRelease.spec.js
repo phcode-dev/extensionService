@@ -11,6 +11,7 @@ import registryJSON from "../data/registry.js";
 import Ajv from "ajv";
 import {initGitHubClient} from "../../../src/github.js";
 import {EXTENSION_SIZE_LIMIT_MB} from "../../../src/constants.js";
+import {S3} from '../../../src/s3.js';
 
 export const AJV = new Ajv();
 
@@ -45,9 +46,21 @@ describe('unit Tests for publishGithubRelease api', function () {
         };
     });
 
-    it('should publishGithubRelease', async function () {
+    async function _testPublishSuccess() {
+        let bucket, key, filePathToUpload;
+        S3.uploadFile = function (_bucket, _key, _filePathToUpload) {
+            bucket = _bucket; key = _key; filePathToUpload = _filePathToUpload;
+        };
         let helloResponse = await publishGithubRelease(request, reply);
         expect(helloResponse).eql({message: 'done'});
+        expect(bucket).eql("phcode-extensions-test");
+        expect(key).eql("extensions/angular.moduler-0.0.1.zip");
+        expect(filePathToUpload.endsWith("downloads/org_repo_gitTag_extension.zip")).to.be.true;
+        return helloResponse;
+    }
+
+    it('should publishGithubRelease', async function () {
+        await _testPublishSuccess();
     });
 
     it('should validate schemas for sample request/responses', async function () {
@@ -56,7 +69,7 @@ describe('unit Tests for publishGithubRelease api', function () {
         expect(requestValidator(request.query)).to.be.true;
         // response
         const successResponseValidator = AJV.compile(getPublishGithubReleaseSchema().schema.response["200"]);
-        let response = await publishGithubRelease(request, reply);
+        let response = await _testPublishSuccess();
         expect(successResponseValidator(response)).to.be.true;
     });
 
