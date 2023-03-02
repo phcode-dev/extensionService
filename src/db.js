@@ -8,6 +8,7 @@ let db = {
     put: coco.put,
     update: coco.update,
     getFromIndex: coco.getFromIndex,
+    query: coco.query,
     close: coco.close
 };
 
