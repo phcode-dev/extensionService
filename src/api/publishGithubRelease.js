@@ -201,7 +201,7 @@ async function _validateExtensionPackageJson(githubReleaseTag, packageJSON, repo
     if(registryPKGJSON) {
         for(let versionInfo of registryPKGJSON.versions){
             if(versionInfo.version === packageJSON.version){
-                let errorMsg = `Package version "${packageJSON.version}" already published on ${versionInfo.published}. Please update version number to above ${registryPKGJSON.metadata.version}.`;
+                let errorMsg = `Extension: ${packageJSON.name}, Package version "${packageJSON.version}" already published on ${versionInfo.published}. Please update version number to above ${registryPKGJSON.metadata.version}.`;
                 error = error + `\n${errorMsg}`;
                 issueMessages.push(errorMsg);
                 break;
@@ -209,7 +209,7 @@ async function _validateExtensionPackageJson(githubReleaseTag, packageJSON, repo
         }
         existingRegistryPKGVersion = registryPKGJSON.metadata.version;
         if(lte(packageJSON.version, existingRegistryPKGVersion)){
-            let errorMsg = `Package version should be greater than ${existingRegistryPKGVersion}, but received "${packageJSON.version}".`;
+            let errorMsg = `Extension: ${packageJSON.name}, Package version should be greater than ${existingRegistryPKGVersion}, but received "${packageJSON.version}".`;
             error = error + `\n${errorMsg}`;
             issueMessages.push(errorMsg);
         }
@@ -263,7 +263,7 @@ async function _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAs
         }
     }
     if(!packageJSON?.engines?.brackets){
-        missingParams.push(`"engines":{"brackets":<version Eg. ">=0.34.0"}>`);
+        missingParams.push(`Eg.: "engines":{"brackets": ">=0.34.0" }>`);
     }
     if(missingParams.length){
         error = "Required parameters missing in package.json: " + missingParams;
@@ -346,7 +346,7 @@ async function _UpdateReleaseInfo(release, existingReleaseInfo) {
     }
 }
 
-async function _UpdateReleaseSuccess(release, existingReleaseInfo) {
+async function _UpdateReleaseSuccess(release, existingReleaseInfo, registryPKGJSON) {
     if(!existingReleaseInfo || !existingReleaseInfo.documentId) {
         console.error("_UpdateReleaseSuccess called without an existing release entry.");
         throw new Error("Internal error. this shouldn't have happened. Please raise an issue in https://github.com/phcode-dev/phoenix/issues");
@@ -355,6 +355,8 @@ async function _UpdateReleaseSuccess(release, existingReleaseInfo) {
     existingReleaseInfo.published = true;
     existingReleaseInfo.status = RELEASE_STATUS_PUBLISHED;
     existingReleaseInfo.lastUpdatedDateUTC = Date.now();
+    existingReleaseInfo.publishedExtensionName = registryPKGJSON.metadata.name;
+    existingReleaseInfo.publishedVersion = registryPKGJSON.metadata.version;
     console.log("Update release table success: ", await db.update(RELEASE_DETAILS_TABLE, existingReleaseInfo.documentId,
         existingReleaseInfo));
     if(existingReleaseInfo.githubIssue){
@@ -426,7 +428,7 @@ export async function publishGithubRelease(request, reply) {
 
         await syncRegistryDBToS3JSON();
 
-        await _UpdateReleaseSuccess(githubReleaseTag, existingReleaseInfo);
+        await _UpdateReleaseSuccess(githubReleaseTag, existingReleaseInfo, registryPKGJSON);
 
         const response = {
             message: "done"

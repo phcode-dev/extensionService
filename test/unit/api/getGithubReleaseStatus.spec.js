@@ -54,6 +54,34 @@ describe('unit Tests for getGithubReleaseStatus api', function () {
         });
     });
 
+    it('should getGithubReleaseStatus return existing release with optional details', async function () {
+        db.getFromIndex = function (_tableName) {
+            return {
+                isSuccess: true,
+                documents: [{
+                    published: false,
+                    status: "PROCESSING",
+                    errors: ["oops"],
+                    githubIssue: "5",
+                    lastUpdatedDateUTC: 1234,
+                    publishedExtensionName: "a.x",
+                    publishedVersion: "1.0.0"
+                }]};
+        };
+        let helloResponse = await getGithubReleaseStatus(_getRequest(), getSimpleGetReply());
+        expect(helloResponse).eql({
+            "errors": [
+                "oops"
+            ],
+            "githubIssue": "5",
+            "lastUpdatedDateUTC": 1234,
+            "published": false,
+            "status": "PROCESSING",
+            publishedExtensionName: "a.x",
+            publishedVersion: "1.0.0"
+        });
+    });
+
     it('should validate schemas for sample request/responses', async function () {
         let request = _getRequest();
         // request
