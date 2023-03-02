@@ -29,6 +29,8 @@ const schema = {
                 required: ['status', 'errors'],
                 properties: {
                     status: {type: 'string'},
+                    publishedExtensionName: {type: 'string'},
+                    publishedVersion: {type: 'string'},
                     errors: {type: 'array', "items": {"type": "string"}},
                     published: {type: 'boolean'},
                     githubIssue: {type: 'string'},
@@ -67,6 +69,12 @@ export async function getGithubReleaseStatus(request, _reply) {
         response.errors = existingRelease.errors;
         response.githubIssue = "" + existingRelease.githubIssue;
         response.lastUpdatedDateUTC = existingRelease.lastUpdatedDateUTC;
+        if(existingRelease.publishedExtensionName){
+            response.publishedExtensionName = existingRelease.publishedExtensionName;
+        }
+        if(existingRelease.publishedVersion){
+            response.publishedVersion = existingRelease.publishedVersion;
+        }
     }
     return response;
 }

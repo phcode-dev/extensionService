@@ -13,9 +13,8 @@
             if (!url.endsWith("/") && !url.endsWith("index.html")) {
                 location.href = url + "/?" + queryParams;
             }
-            const urlParams = new URLSearchParams(window.location.search);
-            document.title = `${urlParams.get('tag')} Release Publish status`;
         </script>
+        <script src="script.js"></script>
 
         <link href="../bootstrap/css/bootstrap.min.css" rel="stylesheet" />
 
@@ -86,7 +85,7 @@
             }
         </style>
     </head>
-    <body>
+    <body onload="showStatus();">
         <main>
             <div class="container py-4">
                 <header class="pb-3 mb-4 border-bottom">
@@ -107,14 +106,14 @@
                     class="p-5 mb-4 bg-light rounded-3 hidden">
                     <div class="container-fluid py-5">
                         <h1 class="display-4 fw-bold status-fail">
-                            <a
+                            <a id="successReleaseLink"
                                 class="status-success"
                                 href="https://github.com/user/repo/releases/tag/githubReleaseTag"
                                 target="_blank"
                                 >extension, githubReleaseTag Published</a
                             >
                         </h1>
-                        <h2>version: 3.2.5</h2>
+                        <h2 id="successVersion">version: 3.2.5</h2>
                         <p class="col-md-8 fs-4">Release details</p>
                         <div
                             class="alert alert-success alert-dismissible fade show"
@@ -130,7 +129,7 @@
                     class="p-5 mb-4 bg-light rounded-3 hidden">
                     <div class="container-fluid py-5">
                         <h1 class="display-4 fw-bold status-fail">
-                            <a
+                            <a id="failedReleaseLink"
                                 class="status-fail"
                                 href="https://github.com/user/repo/releases/tag/dfg"
                                 target="_blank"
@@ -147,13 +146,8 @@
                             <span id="processedDate">1/Jan/2023 UTC</span>
                         </div>
                         <div id="publishErrorList">
-                            <div
-                                class="alert alert-danger alert-dismissible fade show"
-                                role="alert">
-                                Fix this and that.
-                            </div>
                         </div>
-                        <button class="btn btn-primary btn-lg" type="button">
+                        <button id="retryRelease" onclick="retryRelease()" class="btn btn-primary btn-lg" type="button">
                             Retry release
                         </button>
                     </div>
