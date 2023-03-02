@@ -29,6 +29,21 @@ async function githubRequestFnMock(url, options) {
         }
         throw {status: 404};
     }
+    if(url.startsWith("POST /repos/") && url.endsWith("/issues") ){ // issue related api
+        return  {
+            data: {
+                number: 1,
+                html_url: "https://github.com/owner/repo/issues/1"
+            }
+        };
+    }
+    if(url.startsWith("POST /repos/") && url.endsWith("/comments") ){ // issue related api
+        return  {
+            data: {
+                html_url: "https://github.com/owner/repo/issues/1#issuecomment-1370538185"
+            }
+        };
+    }
 }
 
 const MOCKED_ENV_VAR = "mocked_env_var";
