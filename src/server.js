@@ -30,6 +30,7 @@ import {getPublishGithubReleaseSchema, publishGithubRelease} from "./api/publish
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {initGitHubClient} from "./github.js";
+import {getGetGithubReleaseStatusSchema, getGithubReleaseStatus} from "./api/getGithubReleaseStatus.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -87,6 +88,12 @@ server.get('/hello', getHelloSchema(), function (request, reply) {
 addUnAuthenticatedAPI('/publishGithubRelease');
 server.get('/publishGithubRelease', getPublishGithubReleaseSchema(), function (request, reply) {
     return publishGithubRelease(request, reply);
+});
+
+// public getGithubReleaseStatus api
+addUnAuthenticatedAPI('/getGithubReleaseStatus');
+server.get('/getGithubReleaseStatus', getGetGithubReleaseStatusSchema(), function (request, reply) {
+    return getGithubReleaseStatus(request, reply);
 });
 
 // An authenticated version of the hello api

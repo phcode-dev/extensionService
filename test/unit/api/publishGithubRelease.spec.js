@@ -42,13 +42,33 @@ describe('unit Tests for publishGithubRelease api', function () {
         S3.getObject = _getObject;
     });
 
+    let documents = {}, docID = 0;
     beforeEach(function () {
+        documents = {};
         request = getSimpleGETRequest();
         reply = getSimpleGetReply();
         request.query.releaseRef = "org/repo:refs/tags/gitTag";
-        db.getFromIndex = function (_tableName) {
+        db.put = function (tableName, document) {
+            let newDocID = "" + docID++;
+            documents[tableName + ":" + newDocID] = document;
+            return {isSuccess: true, documentId: newDocID};
+        };
+        db.getFromIndex = function (tableName, queryObject) {
+            let keys = Object.keys(documents);
+            let foundDocs =[];
+            for(let key of keys){
+                if(key.startsWith(tableName+":")){
+                    let doc = documents[key];
+                    let qKeys = Object.keys(queryObject);
+                    for (let qkey of qKeys){
+                        if(doc[qkey] === queryObject[qkey]){
+                            foundDocs.push(doc);
+                        }
+                    }
+                }
+            }
             return {isSuccess: true,
-                documents:[]
+                documents:foundDocs
             };
         };
         db.query = function () {

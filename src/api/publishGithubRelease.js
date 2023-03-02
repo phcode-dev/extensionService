@@ -337,7 +337,7 @@ async function _UpdateReleaseInfo(release, existingReleaseInfo) {
             let {documentId, isSuccess } = await db.put(RELEASE_DETAILS_TABLE, releaseInfo);
             releaseInfo.documentId = documentId;
             console.log(`Putting release ${releaseRef} details to db success: ${isSuccess}, documentId: ${documentId}`);
-            return  await _getReleaseInfo(release);
+            return await _getReleaseInfo(release);
         }
     } catch (e) {
         console.error("Error while putting error status of release. ", e);
