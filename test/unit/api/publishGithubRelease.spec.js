@@ -1,4 +1,4 @@
-/*global describe, it, beforeEach, before*/
+/*global describe, it, beforeEach, before, after*/
 import mockedFunctions from "../setupMocks.js";
 import * as chai from 'chai';
 import db from "../../../src/db.js";
@@ -19,7 +19,7 @@ export const AJV = new Ajv();
 let expect = chai.expect;
 
 describe('unit Tests for publishGithubRelease api', function () {
-    let request, reply;
+    let request, reply, _uploadFile, _getObject;
 
     before(function () {
         initGitHubClient();
@@ -33,6 +33,13 @@ describe('unit Tests for publishGithubRelease api', function () {
         ZipUtils.getExtensionPackageJSON = function () {
             return {packageJSON: VALID_PACKAGE_JSON};
         };
+        _uploadFile = S3.uploadFile;
+        _getObject = S3.getObject;
+    });
+
+    after(()=>{
+        S3.uploadFile = _uploadFile;
+        S3.getObject = _getObject;
     });
 
     beforeEach(function () {
@@ -44,12 +51,20 @@ describe('unit Tests for publishGithubRelease api', function () {
                 documents:[]
             };
         };
+        db.query = function () {
+            return {isSuccess: true,
+                documents:[]
+            };
+        };
     });
 
     async function _testPublishSuccess() {
         let bucket, key, filePathToUpload;
         S3.uploadFile = function (_bucket, _key, _filePathToUpload) {
             bucket = _bucket; key = _key; filePathToUpload = _filePathToUpload;
+        };
+        S3.getObject = function () {
+            return JSON.stringify(registryJSON);
         };
         let helloResponse = await publishGithubRelease(request, reply);
         expect(helloResponse).eql({message: 'done'});

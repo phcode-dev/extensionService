@@ -11,6 +11,7 @@ import {
 } from "../constants.js";
 import fs from "fs";
 import {S3} from "../s3.js";
+import {syncRegistryDBToS3JSON} from "../utils/sync.js";
 
 const RELEASE_STATUS_PROCESSING = "processing";
 
@@ -345,7 +346,7 @@ async function _UpdateReleaseInfo(release, existingReleaseInfo) {
 async function _updateRegistryJSONinDB(existingRegistryPKGVersion, existingRegistryDocumentId, registryPKGJSON,
     issueMessages) {
     let status;
-    registryPKGJSON.syncPending = true;
+    registryPKGJSON.syncPending = 'Y';// coco db doesnt support boolean queries yet
     registryPKGJSON.EXTENSION_ID = registryPKGJSON.metadata.name;
     if(existingRegistryDocumentId){
         // we need to update existing extension release only if no one updated the release while this release
@@ -401,6 +402,8 @@ export async function publishGithubRelease(request, reply) {
         // publish new package json to registry db
         await _updateRegistryJSONinDB(existingRegistryPKGVersion, existingRegistryDocumentId, registryPKGJSON,
             issueMessages);
+
+        await syncRegistryDBToS3JSON();
 
         const response = {
             message: "done"
