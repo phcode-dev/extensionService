@@ -153,17 +153,33 @@ function _validateGitHubReleaseAssets(githubReleaseDetails, issueMessages) {
     return extensionZipAsset;
 }
 
-async function _validateExtensionPackageJson(githubReleaseTag, packageJSON, repoDetails, issueMessages) {
+async function _getRegistryPkgJSON(githubReleaseTag, extensionName) {
     const queryObj = {};
-    const newOwner = `github:${githubReleaseTag.owner}`;
     const releaseRef = `${githubReleaseTag.owner}/${githubReleaseTag.repo}/${githubReleaseTag.tag}`;
-    queryObj[FIELD_EXTENSION_ID] = packageJSON.name;
+    queryObj[FIELD_EXTENSION_ID] = extensionName;
     let registryPKGJSON = await db.getFromIndex(EXTENSIONS_DETAILS_TABLE, queryObj);
     if(!registryPKGJSON.isSuccess){
         // unexpected error
         throw new Error("Error getting extensionPKG details from db: " + releaseRef);
     }
-    registryPKGJSON = registryPKGJSON.documents.length === 1 ? registryPKGJSON.documents[0] : null;
+    if(registryPKGJSON.documents.length === 1){
+        let existingRegistryDocumentId = registryPKGJSON.documents[0].documentId;
+        delete registryPKGJSON.documents[0].documentId;
+        return {
+            existingRegistryDocumentId,
+            registryPKGJSON: registryPKGJSON.documents[0]
+        };
+    }
+    return {
+        existingRegistryDocumentId: null,
+        registryPKGJSON: null
+    };
+}
+
+async function _validateExtensionPackageJson(githubReleaseTag, packageJSON, repoDetails, issueMessages) {
+    const newOwner = `github:${githubReleaseTag.owner}`;
+    let existingRegistryPKGVersion = null;
+    let {registryPKGJSON, existingRegistryDocumentId} = await _getRegistryPkgJSON(githubReleaseTag, packageJSON.name);
     let error = "";
     if(registryPKGJSON && registryPKGJSON.owner !== newOwner) {
         let errorMsg = `Extension of the same name "${packageJSON.name}" already exists (owned by https://github.com/${registryPKGJSON.owner.split(":")[1]}). Please choose a different extension name.`;
@@ -188,8 +204,9 @@ async function _validateExtensionPackageJson(githubReleaseTag, packageJSON, repo
                 break;
             }
         }
-        if(lte(packageJSON.version, registryPKGJSON.metadata.version)){
-            let errorMsg = `Package version should be greater than ${registryPKGJSON.metadata.version}, but received "${packageJSON.version}".`;
+        existingRegistryPKGVersion = registryPKGJSON.metadata.version;
+        if(lte(packageJSON.version, existingRegistryPKGVersion)){
+            let errorMsg = `Package version should be greater than ${existingRegistryPKGVersion}, but received "${packageJSON.version}".`;
             error = error + `\n${errorMsg}`;
             issueMessages.push(errorMsg);
         }
@@ -222,7 +239,7 @@ async function _validateExtensionPackageJson(githubReleaseTag, packageJSON, repo
         "downloads": 0
     });
 
-    return registryPKGJSON;
+    return {existingRegistryPKGVersion, existingRegistryDocumentId, registryPKGJSON};
 }
 
 async function _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, repoDetails, issueMessages) {
@@ -252,8 +269,9 @@ async function _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAs
             updatePublishErrors: true,
             error};
     }
-    const registryPKGJSON = await _validateExtensionPackageJson(githubReleaseTag, packageJSON, repoDetails, issueMessages);
-    return {extensionZipPath, registryPKGJSON};
+    const {existingRegistryPKGVersion, registryPKGJSON} =
+        await _validateExtensionPackageJson(githubReleaseTag, packageJSON, repoDetails, issueMessages);
+    return {extensionZipPath, existingRegistryPKGVersion, registryPKGJSON};
 }
 
 async function _createGithubIssue(release) {
@@ -301,11 +319,11 @@ async function _UpdateReleaseInfo(release, existingReleaseInfo) {
             if(!existingReleaseInfo.githubIssue){
                 existingReleaseInfo.githubIssue = await _createGithubIssue(release);
             }
-            await db.update(RELEASE_DETAILS_TABLE, existingReleaseInfo.documentId,
-                existingReleaseInfo);
+            console.log("Update release table: ", await db.update(RELEASE_DETAILS_TABLE, existingReleaseInfo.documentId,
+                existingReleaseInfo));
             return existingReleaseInfo;
         } else {
-            console.log(`updating new release ${releaseRef} details: `);
+            console.log(`creating new release ${releaseRef} details: `);
             let releaseInfo = {
                 errors: [],
                 status: RELEASE_STATUS_PROCESSING,
@@ -324,11 +342,37 @@ async function _UpdateReleaseInfo(release, existingReleaseInfo) {
     }
 }
 
+async function _updateRegistryJSONinDB(existingRegistryPKGVersion, existingRegistryDocumentId, registryPKGJSON,
+    issueMessages) {
+    let status;
+    registryPKGJSON.syncPending = true;
+    registryPKGJSON.EXTENSION_ID = registryPKGJSON.metadata.name;
+    if(existingRegistryDocumentId){
+        // we need to update existing extension release only if no one updated the release while this release
+        // was being published, so the conditional update with version check.
+        console.log("updating extension", registryPKGJSON.EXTENSION_ID);
+        status = await db.update(EXTENSIONS_DETAILS_TABLE, existingRegistryDocumentId,
+            registryPKGJSON, `$.metadata.version='${existingRegistryPKGVersion}'`);
+    } else {
+        console.log("Creating extension", registryPKGJSON.EXTENSION_ID);
+        status = await db.put(EXTENSIONS_DETAILS_TABLE, registryPKGJSON);
+    }
+    if(!status.isSuccess){
+        console.error(`Error putting/updating extension details(did another release happen while releasing this version) in db ${EXTENSIONS_DETAILS_TABLE} :`+
+            ` documentId: ${existingRegistryDocumentId} existing version: ${existingRegistryPKGVersion}, new pkg: ${JSON.stringify(registryPKGJSON)}`, status);
+        const message = `Release failed. Did another release happen for the same extension? ${registryPKGJSON.metadata.name}`+
+            ` while this release was being published?\n If so you may have to update your version number and make a new release with higher version number.`;
+        issueMessages.push(message);
+        throw {status: HTTP_STATUS_CODES.CONFLICT,
+            error: message};
+    }
+}
+
 export async function publishGithubRelease(request, reply) {
     let issueMessages = [],
         existingReleaseInfo = null,
         githubReleaseTag = null,
-        extensionZipPath = null;
+        _extensionZipPath = null;
     try {
         // releaseRef of the form <org>/<repo>:refs/tags/<dfg>
         githubReleaseTag = _validateAndGetParams(request.query.releaseRef);
@@ -343,19 +387,20 @@ export async function publishGithubRelease(request, reply) {
                 error: `Draft or PreRelease builds cannot be published.`};
         }
         const extensionZipAsset = _validateGitHubReleaseAssets(newGithubReleaseDetails, issueMessages);
-        const {extensionZipPath, registryPKGJSON}=
+        const {extensionZipPath, existingRegistryPKGVersion, existingRegistryDocumentId, registryPKGJSON}=
             await _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, repoDetails, issueMessages);
+        _extensionZipPath = extensionZipPath;
         // we should also in the future do a virus scan, but will rely on av in users machine for the time being
         // https://developers.virustotal.com/reference/files-scan by Google Cloud is available for non-commercial apps.
 
         await S3.uploadFile(EXTENSIONS_BUCKET,
             `extensions/${registryPKGJSON.metadata.name}-${registryPKGJSON.metadata.version}.zip`,
-            extensionZipPath);
+            _extensionZipPath);
+        fs.unlink(_extensionZipPath, console.error); // cleanup downloads. (But we don't check the result)
 
-        // cleanup
-        setTimeout(()=>{
-            fs.unlink(extensionZipPath, console.error); // cleanup after we return. (But we don't check the result)
-        }, 1000);
+        // publish new package json to registry db
+        await _updateRegistryJSONinDB(existingRegistryPKGVersion, existingRegistryDocumentId, registryPKGJSON,
+            issueMessages);
 
         const response = {
             message: "done"
@@ -366,8 +411,8 @@ export async function publishGithubRelease(request, reply) {
         if(err.updatePublishErrors) {
             _updatePublishErrors(githubReleaseTag, issueMessages); // dont await, background task
         }
-        if(extensionZipPath){
-            fs.unlink(extensionZipPath, console.error); // cleanup after we return. (But we don't check the result)
+        if(_extensionZipPath){
+            fs.unlink(_extensionZipPath, console.error); // cleanup after an exception. (But we don't check the result)
         }
         if(err.status){
             reply.status(err.status);
