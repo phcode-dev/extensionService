@@ -1,6 +1,6 @@
 // Refer https://json-schema.org/understanding-json-schema/index.html
 import {HTTP_STATUS_CODES} from "@aicore/libcommonutils";
-import {getRepoDetails, getReleaseDetails, createIssue, getOrgDetails} from "../github.js";
+import {getRepoDetails, getReleaseDetails, createIssue, getOrgDetails, commentOnIssue} from "../github.js";
 import db from "../db.js";
 import {downloader} from "../utils/downloader.js";
 import {ZipUtils} from "../utils/zipUtils.js";
@@ -13,7 +13,9 @@ import fs from "fs";
 import {S3} from "../s3.js";
 import {syncRegistryDBToS3JSON} from "../utils/sync.js";
 
-const RELEASE_STATUS_PROCESSING = "processing";
+const RELEASE_STATUS_PROCESSING = "processing",
+    RELEASE_STATUS_FAILED = "failed",
+    RELEASE_STATUS_PUBLISHED = "published";
 
 const schema = {
     schema: {
@@ -270,9 +272,9 @@ async function _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAs
             updatePublishErrors: true,
             error};
     }
-    const {existingRegistryPKGVersion, registryPKGJSON} =
+    const {existingRegistryPKGVersion, registryPKGJSON, existingRegistryDocumentId} =
         await _validateExtensionPackageJson(githubReleaseTag, packageJSON, repoDetails, issueMessages);
-    return {extensionZipPath, existingRegistryPKGVersion, registryPKGJSON};
+    return {extensionZipPath, existingRegistryPKGVersion, existingRegistryDocumentId, registryPKGJSON};
 }
 
 async function _createGithubIssue(release) {
@@ -290,7 +292,7 @@ async function _updatePublishErrors(release, issueMessages) {
         const releaseRef = `${release.owner}/${release.repo}/${release.tag}`;
         console.log(`existing release ${releaseRef} found: `, existingReleaseInfo);
         existingReleaseInfo.errors = issueMessages;
-        existingReleaseInfo.status = "failed";
+        existingReleaseInfo.status = RELEASE_STATUS_FAILED;
         existingReleaseInfo.lastUpdatedDateUTC = Date.now();
         if(!existingReleaseInfo.githubIssue){
             existingReleaseInfo.githubIssue = await _createGithubIssue(release);
@@ -332,14 +334,33 @@ async function _UpdateReleaseInfo(release, existingReleaseInfo) {
                 githubIssue: await _createGithubIssue(release)
             };
             releaseInfo[FIELD_RELEASE_ID] = releaseRef;
-            console.log(`Putting release ${releaseRef} details to db`,
-                await db.put(RELEASE_DETAILS_TABLE, releaseInfo));
+            let {documentId, isSuccess } = await db.put(RELEASE_DETAILS_TABLE, releaseInfo);
+            releaseInfo.documentId = documentId;
+            console.log(`Putting release ${releaseRef} details to db success: ${isSuccess}, documentId: ${documentId}`);
             return  await _getReleaseInfo(release);
         }
     } catch (e) {
         console.error("Error while putting error status of release. ", e);
         return release;
         // silently bail out
+    }
+}
+
+async function _UpdateReleaseSuccess(release, existingReleaseInfo) {
+    if(!existingReleaseInfo || !existingReleaseInfo.documentId) {
+        console.error("_UpdateReleaseSuccess called without an existing release entry.");
+        throw new Error("Internal error. this shouldn't have happened. Please raise an issue in https://github.com/phcode-dev/phoenix/issues");
+    }
+    existingReleaseInfo.errors = [];
+    existingReleaseInfo.published = true;
+    existingReleaseInfo.status = RELEASE_STATUS_PUBLISHED;
+    existingReleaseInfo.lastUpdatedDateUTC = Date.now();
+    console.log("Update release table success: ", await db.update(RELEASE_DETAILS_TABLE, existingReleaseInfo.documentId,
+        existingReleaseInfo));
+    if(existingReleaseInfo.githubIssue){
+        console.error("Github issue is expected in _UpdateReleaseSuccess! ");
+        await commentOnIssue(release.owner, release.repo, existingReleaseInfo.githubIssue,
+            "Extension successfully published to store. You can close this issue at any time.");
     }
 }
 
@@ -404,6 +425,8 @@ export async function publishGithubRelease(request, reply) {
             issueMessages);
 
         await syncRegistryDBToS3JSON();
+
+        await _UpdateReleaseSuccess(githubReleaseTag, existingReleaseInfo);
 
         const response = {
             message: "done"
