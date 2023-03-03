@@ -6,6 +6,10 @@ export const secretAccessKey = getConfigs().secretAccessKey;
 export const githubAPIToken = getConfigs().githubAPIToken;
 export const cocoEndPoint = getConfigs().cocoEndPoint;
 export const cocoAuthKey = getConfigs().cocoAuthKey;
+// GitHub API rate limit is 5000 for authenticated users. Be conservative and set this to 2000.
+export const githubHourlyRateLimit = getConfigs().githubHourlyRateLimit;
+// the repository where public ops related issues can be created. Eg. "phcode-dev/extensionService"
+export const opsRepo = getConfigs().opsRepo;
 export const DATABASE_NAME = `phcode_extensions_${stage}`;
 export const EXTENSIONS_DETAILS_TABLE = `${DATABASE_NAME}.extensionDetails`;
 export const RELEASE_DETAILS_TABLE = `${DATABASE_NAME}.releaseDetails`;

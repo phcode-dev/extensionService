@@ -29,9 +29,10 @@ import {getHelloSchema, hello} from "./api/hello.js";
 import {getPublishGithubReleaseSchema, publishGithubRelease} from "./api/publishGithubRelease.js";
 import path from 'path';
 import { fileURLToPath } from 'url';
-import {initGitHubClient} from "./github.js";
+import {initGitHubClient, setupGitHubOpsMonitoring} from "./github.js";
 import {getGetGithubReleaseStatusSchema, getGithubReleaseStatus} from "./api/getGithubReleaseStatus.js";
 import {getCountDownloadSchema, countDownload} from "./api/countDownload.js";
+import {startCollectStarsWorker} from "./utils/sync.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -124,6 +125,8 @@ export async function startServer() {
     console.log("awaiting connection to coco db");
     await db.init(cocoEndPoint, cocoAuthKey);
     initGitHubClient();
+    setupGitHubOpsMonitoring();
+    startCollectStarsWorker();
     console.log("connected to coco db");
     setupTasks();
     const configs = getConfigs();

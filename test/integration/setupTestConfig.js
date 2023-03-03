@@ -12,7 +12,9 @@ const defaultTestConfig = {
     "accessKeyId": "update in testConfig.json file to run integ tests",
     "secretAccessKey": "update in testConfig.json file to run integ tests",
     "githubAPIToken": "update in testConfig.json file to run integ tests",
-    "baseURL": "update in testConfig.json file to run integ tests"
+    "baseURL": "update in testConfig.json file to run integ tests",
+    "githubHourlyRateLimit": "update in testConfig.json file to run integ tests",
+    "opsRepo": "update in testConfig.json file to run integ tests"
 };
 
 

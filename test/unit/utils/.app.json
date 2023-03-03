@@ -7,6 +7,8 @@
   "stage": "test",
   "githubAPIToken": "githubToken",
   "baseURL": "http://localhost:5000",
+  "githubHourlyRateLimit": 2000,
+  "opsRepo": "phcode-dev/extensionService",
   "mysql": {
     "host": "localhost",
     "port": "3306",
