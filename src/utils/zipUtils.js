@@ -16,7 +16,12 @@ function getExtensionPackageJSON(zipPath) {
         zip.entries().then(entries=>{
             for (const entry of Object.values(entries)) {
                 let pathSplit = entry.name.split("/");
-                rootFolders[pathSplit[0]] = true;
+                if(entry.isDirectory || pathSplit.length > 1) {
+                    // windows compression util only generates Directory entries if a directory is empty.
+                    // else it will list only files in non-empty dirs. So we check if the path if of the form
+                    // a/b[/c...json] to detect rootFolders implicitly conveyed by file paths.
+                    rootFolders[pathSplit[0]] = true;
+                }
                 if(entry.isFile && (entry.name === "package.json" || entry.name.endsWith("/package.json"))) {
                     packageJSONFilePaths[entry.name] = entry;
                 }
