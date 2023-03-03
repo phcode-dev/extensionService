@@ -9,7 +9,8 @@ let db = {
     update: coco.update,
     getFromIndex: coco.getFromIndex,
     query: coco.query,
-    close: coco.close
+    close: coco.close,
+    mathAdd: coco.mathAdd
 };
 
 export default db;

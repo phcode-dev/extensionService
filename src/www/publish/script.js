@@ -23,7 +23,15 @@ function retryRelease() {
 }
 
 function showStatus() {
+    if(!owner || !repo || !tag){
+        document.getElementById("releaseCheckStatus").textContent =
+            "No such release. Please check if you provided the correct Github Owner/Repo/Release tag.";
+        return;
+    }
     fetch(`../../getGithubReleaseStatus?owner=${owner}&repo=${repo}&tag=${tag}`).then(async result=>{
+        if(result.status !== 200){
+            throw new Error(`getGithubReleaseStatus returned ${result.status}`);
+        }
         let releaseDetail = await result.json();
         console.log(releaseDetail);
         if(releaseDetail.published) {
@@ -58,7 +66,12 @@ function showStatus() {
             }
         }
     }).catch((err)=>{
+        document.getElementById("releaseCheckingSection").classList.remove("hidden");
+        document.getElementById("releaseSuccessSection").classList.add("hidden");
+        document.getElementById("releaseFailedSection").classList.add("hidden");
         console.error("Error while fetching release status", err);
-        document.getElementById("releaseCheckStatus").textContent = "Could not retrieve release status.";
+        document.getElementById("releaseCheckStatus").innerHTML = "Could not retrieve release status for: </br>" +
+            `<a href='https://github.com/${owner}/${repo}/releases/tag/${tag}'>GitHub release ${owner}/${repo}/${tag}</a>.` +
+        "</br>Are you sure that the release exists?";
     });
 }

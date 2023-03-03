@@ -16,7 +16,8 @@
     "**/*.spec.js",
     "src/index.js",
     "src/server.js",
-    "src/www/bootstrap/*"
+    "src/www/bootstrap/*",
+    "src/www/publish/*"
   ],
   "branches": 80,
   "lines": 80,
