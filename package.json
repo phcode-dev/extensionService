@@ -22,7 +22,7 @@
     "test": "npm run test:unit && npm run test:integ",
     "test:unit": "APP_CONFIG=./test/unit/utils/.app.json mocha test/unit/*.spec.js test/unit/**/*.spec.js  test/unit/**/*.spec.js  test/unit/**/**/*.spec.js --timeout=3000",
     "setupIntegTestConfig": "node ./test/integration/setupTestConfig.js",
-    "test:integ": "npm run setupIntegTestConfig && APP_CONFIG=./src/testConfig.json mocha test/integration/*.spec.js test/integration/**/*.spec.js --timeout=3000",
+    "test:integ": "npm run setupIntegTestConfig && TEST_ENV=integ APP_CONFIG=./src/testConfig.json mocha test/integration/*.spec.js test/integration/**/*.spec.js --timeout=3000",
     "printReportsLink": "echo Detailed unit test coverage report: file:///$(pwd)/coverage-unit/index.html && echo Detailed integration test coverage report: file:///$(pwd)/coverage-integration/index.html",
     "cover": "npm run cover:unit",
     "cover:unit": "c8 -c .nycrc.unit.json npm run test:unit && npm run --silent printReportsLink",
