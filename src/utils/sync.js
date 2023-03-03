@@ -196,6 +196,10 @@ export async function _syncPopularityEvery15Minutes() { // exported for unit tes
 // not testing this as no time and is manually tested. If you are touching this code, manual test thoroughly
 let worker;
 export function startCollectStarsWorker() {
+    if(process.env.TEST_ENV){
+        console.log("test environment detected, disabling startCollectStarsWorker flow");
+        return;
+    }
     if(worker){
         return;
     }

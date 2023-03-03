@@ -22,6 +22,10 @@ function _resetGithubOpsIssue() {
     githubOpsIssueForTheDay = null;
 }
 export function setupGitHubOpsMonitoring() {
+    if(process.env.TEST_ENV){
+        console.log("test environment detected, disabling setupGitHubOpsMonitoring flow");
+        return;
+    }
     setInterval(_resetTPH, ONE_HOUR);
     setInterval(_resetGithubOpsIssue, ONE_DAY);
 }
