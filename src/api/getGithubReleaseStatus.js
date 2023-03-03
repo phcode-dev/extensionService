@@ -59,22 +59,24 @@ export async function getGithubReleaseStatus(request, _reply) {
         throw new Error("Error getting release details from db: " + releaseRef);
     }
     existingRelease = existingRelease.documents.length === 1 ? existingRelease.documents[0] : null;
-    const response = {
-        status: "NO_SUCH_RELEASE",
-        errors: [`Release not found. IF this is a recent release, please wait for 1 minute before checking again.`]
-    };
-    if (existingRelease) {
-        response.published = existingRelease.published || false;
-        response.status = existingRelease.status;
-        response.errors = existingRelease.errors;
-        response.githubIssue = "" + existingRelease.githubIssue;
-        response.lastUpdatedDateUTC = existingRelease.lastUpdatedDateUTC;
-        if(existingRelease.publishedExtensionName){
-            response.publishedExtensionName = existingRelease.publishedExtensionName;
-        }
-        if(existingRelease.publishedVersion){
-            response.publishedVersion = existingRelease.publishedVersion;
-        }
+    if (!existingRelease) {
+        throw new Error("Release not found. IF this is a recent release," +
+            " please wait for 1 minute before checking again.");
     }
+
+    const response = {
+        published: existingRelease.published || false,
+        status: existingRelease.status,
+        errors: existingRelease.errors,
+        githubIssue: "" + existingRelease.githubIssue,
+        lastUpdatedDateUTC: existingRelease.lastUpdatedDateUTC
+    };
+    if(existingRelease.publishedExtensionName){
+        response.publishedExtensionName = existingRelease.publishedExtensionName;
+    }
+    if(existingRelease.publishedVersion){
+        response.publishedVersion = existingRelease.publishedVersion;
+    }
+
     return response;
 }

@@ -31,6 +31,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import {initGitHubClient} from "./github.js";
 import {getGetGithubReleaseStatusSchema, getGithubReleaseStatus} from "./api/getGithubReleaseStatus.js";
+import {getCountDownloadSchema, countDownload} from "./api/countDownload.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -95,6 +96,13 @@ addUnAuthenticatedAPI('/getGithubReleaseStatus');
 server.get('/getGithubReleaseStatus', getGetGithubReleaseStatusSchema(), function (request, reply) {
     return getGithubReleaseStatus(request, reply);
 });
+
+// public countDownload api
+addUnAuthenticatedAPI('/countDownload');
+server.get('/countDownload', getCountDownloadSchema(), function (request, reply) {
+    return countDownload(request, reply);
+});
+
 
 // An authenticated version of the hello api
 server.get('/helloAuth', getHelloSchema(), function (request, reply) {

@@ -62,7 +62,7 @@ function _setup() {
             isSuccess: true
         };
     };
-    db.createDb = db.createTable = db.createIndex = db.put = db.update = successMock;
+    db.createDb = db.createTable = db.createIndex = db.put = db.update = db.mathAdd = successMock;
     db.getFromIndex = (...args)=>{
         return {
             isSuccess: true,

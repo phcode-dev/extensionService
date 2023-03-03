@@ -20,14 +20,14 @@ describe('unit Tests for getGithubReleaseStatus api', function () {
         return request;
     }
 
-    it('should getGithubReleaseStatus return no such release if no release', async function () {
-        let helloResponse = await getGithubReleaseStatus(_getRequest(), getSimpleGetReply());
-        expect(helloResponse).eql({
-            "errors": [
-                "Release not found. IF this is a recent release, please wait for 1 minute before checking again."
-            ],
-            "status": "NO_SUCH_RELEASE"
-        });
+    it('should getGithubReleaseStatus throw if no release', async function () {
+        let error;
+        try{
+            await getGithubReleaseStatus(_getRequest(), getSimpleGetReply());
+        } catch(e){
+            error = e;
+        }
+        expect(error.message).eql("Release not found. IF this is a recent release, please wait for 1 minute before checking again.");
     });
 
     it('should getGithubReleaseStatus return existing release details', async function () {
