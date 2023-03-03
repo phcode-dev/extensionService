@@ -1,5 +1,5 @@
 import { Octokit } from "@octokit/rest";
-import {githubAPIToken} from "./constants.js";
+import {githubAPIToken, githubHourlyRateLimit, opsRepo, stage} from "./constants.js";
 
 // github api docs: https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue
 export const _gitHub = {
@@ -7,6 +7,43 @@ export const _gitHub = {
 };
 
 let octokit;
+const ONE_HOUR = 1000*60*60,
+    ONE_DAY = ONE_HOUR * 24;
+let requestsInThisHour = 0,
+    githubOpsIssueForTheDay, issueUpdatedInThisHour = false;
+
+/* c8 ignore start */
+// not testing this as no time and is manually tested. If you are touching this code, manual test thoroughly
+function _resetTPH() {
+    requestsInThisHour = 0;
+    issueUpdatedInThisHour = false;
+}
+function _resetGithubOpsIssue() {
+    githubOpsIssueForTheDay = null;
+}
+export function setupGitHubOpsMonitoring() {
+    setInterval(_resetTPH, ONE_HOUR);
+    setInterval(_resetGithubOpsIssue, ONE_DAY);
+}
+/* c8 ignore stop */
+
+async function _newRequestMetric() {
+    requestsInThisHour++;
+    if(requestsInThisHour > githubHourlyRateLimit/2) {
+        let opsRepoSplit = opsRepo.split("/"); //Eg. "phcode-dev/extensionService"
+        if(issueUpdatedInThisHour){
+            return;
+        }
+        issueUpdatedInThisHour = true;
+        const message = `Github API requests for the hour is at ${requestsInThisHour}, Max allowed is ${githubHourlyRateLimit}`;
+        if(!githubOpsIssueForTheDay) {
+            githubOpsIssueForTheDay = await createIssue(opsRepoSplit[0], opsRepoSplit[1],
+                `[OPS-${stage}] Github Rate Limit above threshold.`, message);
+        } else {
+            await commentOnIssue(opsRepoSplit[0], opsRepoSplit[1], githubOpsIssueForTheDay.number, message);
+        }
+    }
+}
 
 export function initGitHubClient() {
     if(octokit){
@@ -37,6 +74,7 @@ export async function createIssue(owner, repo, title, body) {
     // https://docs.github.com/en/rest/issues/issues?apiVersion=2022-11-28#create-an-issue
     // {... "html_url": "https://github.com/octocat/Hello-World/issues/1347", ...}
     console.log("create Github issue: ", arguments);
+    _newRequestMetric();
     let response = await octokit.request(`POST /repos/${owner}/${repo}/issues`, {
         owner,
         repo,
@@ -62,6 +100,7 @@ export async function createIssue(owner, repo, title, body) {
 export async function commentOnIssue(owner, repo, issueNumber, commentString) {
     // https://docs.github.com/en/rest/issues/comments?apiVersion=2022-11-28
     console.log("Comment on Github issue: ", arguments);
+    _newRequestMetric();
     let response = await octokit.request(`POST /repos/${owner}/${repo}/issues/${issueNumber}/comments`, {
         owner,
         repo,
@@ -86,6 +125,7 @@ export async function getOrgDetails(org) {
     // https://docs.github.com/en/rest/orgs/orgs?apiVersion=2022-11-28#get-an-organization
     console.log("Get Org details: ", arguments);
     try{
+        _newRequestMetric();
         let response = await octokit.request(`GET /orgs/${org}`, {
             org
         });
@@ -117,10 +157,11 @@ export async function getOrgDetails(org) {
  * @param {string} repo
  * @return {Promise<{html_url:string, stargazers_count:number}> | null}
  */
-export async function getRepoDetails(owner, repo) {
+export async function getRepoDetails(owner, repo, log = true) {
     // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#get-a-repository
-    console.log("Get Repo details: ", arguments);
+    log && console.log("Get Repo details: ", arguments);
     try{
+        _newRequestMetric();
         let response = await octokit.request(`GET /repos/${owner}/${repo}`, {
             owner, repo
         });
@@ -130,7 +171,7 @@ export async function getRepoDetails(owner, repo) {
             stargazers_count: response.data.stargazers_count
         };
 
-        console.log("GitHub repo details: ", repoDetails);
+        log && console.log("GitHub repo details: ", repoDetails);
         return repoDetails;
     } catch (e) {
         if(e.status === 404){
@@ -155,6 +196,7 @@ export async function getReleaseDetails(owner, repo, tag) {
     // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#get-a-repository
     console.log("Get Release details: ", arguments);
     try{
+        _newRequestMetric();
         let response = await octokit.request(`GET /repos/${owner}/${repo}/releases/tags/${tag}`, {
             owner, repo, tag
         });

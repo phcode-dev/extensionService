@@ -47,11 +47,11 @@ describe('Integration Tests for hello api', function () {
         let output = await fetch("http://localhost:5000/www", { method: 'GET'});
         expect(output.status).eql(200);
         output = await output.text();
-        expect(output.includes("Hello HTML")).eql(true);
+        expect(output.includes("<!DOCTYPE html>")).eql(true);
         output = await fetch("http://localhost:5000/www/", { method: 'GET'});
         expect(output.status).eql(200);
         output = await output.text();
-        expect(output.includes("Hello HTML")).eql(true);
+        expect(output.includes("<!DOCTYPE html>")).eql(true);
     });
 
     it('should get 404 if static web page doesnt exist', async function () {

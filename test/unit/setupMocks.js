@@ -135,11 +135,11 @@ export function setS3Mock(bucket, key, contents) {
  * @param org
  * @param repo
  */
-export function getRepoDetails(org, repo) {
+export function getRepoDetails(org, repo, starGazers = 3) {
     mockedFunctions.githubRequestFnMock = githubRequestFnMock;
     getRepoDetailsResponses[`${org}/${repo}`] = {
         data: {
-            stargazers_count: 3,
+            stargazers_count: starGazers,
             html_url: `https://github.com/${org}/${repo}`
         }
     };
