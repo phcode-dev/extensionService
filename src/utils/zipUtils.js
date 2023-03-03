@@ -16,9 +16,8 @@ function getExtensionPackageJSON(zipPath) {
         zip.entries().then(entries=>{
             for (const entry of Object.values(entries)) {
                 let pathSplit = entry.name.split("/");
-                if(entry.isDirectory){
-                    rootFolders[pathSplit[0]] = true;
-                } else if(entry.name === "package.json" || entry.name.endsWith("/package.json")) {
+                rootFolders[pathSplit[0]] = true;
+                if(entry.isFile && (entry.name === "package.json" || entry.name.endsWith("/package.json"))) {
                     packageJSONFilePaths[entry.name] = entry;
                 }
             }
