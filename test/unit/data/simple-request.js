@@ -74,6 +74,10 @@ export function getSimpleGetReply() {
     reply.status = function (code) {
         reply.statusCode = code;
     }
+    reply.header = function (key, val) {
+        reply.headers = reply.headers || {};
+        reply.headers[key] = val;
+    }
     return reply;
 }
 
