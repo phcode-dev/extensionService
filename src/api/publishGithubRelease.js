@@ -6,8 +6,16 @@ import {downloader} from "../utils/downloader.js";
 import {ZipUtils} from "../utils/zipUtils.js";
 import {valid, lte, clean} from "semver";
 import {
-    FIELD_RELEASE_ID, RELEASE_DETAILS_TABLE, EXTENSION_SIZE_LIMIT_MB, BASE_URL,
-    EXTENSION_DOWNLOAD_DIR, PROCESSING_TIMEOUT_MS, EXTENSIONS_DETAILS_TABLE, FIELD_EXTENSION_ID, EXTENSIONS_BUCKET
+    FIELD_RELEASE_ID,
+    RELEASE_DETAILS_TABLE,
+    EXTENSION_SIZE_LIMIT_MB,
+    BASE_URL,
+    EXTENSION_DOWNLOAD_DIR,
+    PROCESSING_TIMEOUT_MS,
+    EXTENSIONS_DETAILS_TABLE,
+    FIELD_EXTENSION_ID,
+    EXTENSIONS_BUCKET,
+    REGISTRY_FILE
 } from "../constants.js";
 import fs from "fs";
 import {S3} from "../s3.js";
@@ -99,11 +107,12 @@ async function _validateAlreadyReleased(release) {
             error: `Release ${releaseRef} already published!`};
     }
     if(existingRelease?.status === RELEASE_STATUS_PROCESSING){
-        if((Date.now() - existingRelease.lastUpdatedDateUTC) > PROCESSING_TIMEOUT_MS){
+        let timeDiff = Date.now() - existingRelease.lastUpdatedDateUTC;
+        if(timeDiff > PROCESSING_TIMEOUT_MS){
             console.log(`Retrying release ${releaseRef} as process timeout exceeded.`);
         } else {
             throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
-                error: `Release ${releaseRef} is already being processed. Please wait or retry after ${PROCESSING_TIMEOUT_MS/1000} Seconds`};
+                error: `Release ${releaseRef} is already being processed. Please wait or retry after ${(PROCESSING_TIMEOUT_MS-timeDiff)/1000} Seconds`};
         }
     }
     return {
@@ -366,8 +375,43 @@ async function _UpdateReleaseSuccess(release, existingReleaseInfo, registryPKGJS
     }
 }
 
+/**
+ * A github repository that has already published an extension with name "x" cannot start publishing an extension with
+ * another name "y". Github repositories and extension names are locked.
+ * @param newExtensionName
+ * @param ownerRepo
+ * @param issueMessages
+ * @return {Promise<void>}
+ * @private
+ */
+async function _validateExtensionNameForRepo(newExtensionName, ownerRepo, issueMessages) {
+    ownerRepo = ownerRepo.endsWith('/') ? ownerRepo.slice(0, -1) : ownerRepo; // remove trailing slash
+    let registry = JSON.parse(await S3.getObject(EXTENSIONS_BUCKET, REGISTRY_FILE));
+    let extensionIDs = Object.keys(registry);
+    for(let extensionID of extensionIDs) {
+        let extension = registry[extensionID];
+        if(!extension.ownerRepo) {
+            continue;
+        }
+        let existingOwner = extension.ownerRepo;
+        existingOwner = existingOwner.endsWith('/') ?
+            existingOwner.slice(0, -1) : existingOwner; // remove trailing slash
+        if(ownerRepo === existingOwner && extension.metadata.name !== newExtensionName) {
+            let message = `Release failed: Github Repository ${ownerRepo} can only publish extension with name <b>${extension.metadata.name}</b>, `+
+             `but the package.json in zip file had name <b>${newExtensionName}</b>. If you wish to change the name of your extension, `+
+            `please raise an <a href="https://github.com/phcode-dev/phoenix/issues">issue here.</a>`;
+            console.error(message);
+            issueMessages.push(message);
+            throw {status: HTTP_STATUS_CODES.CONFLICT,
+                updatePublishErrors: true,
+                error: message};
+        }
+    }
+}
+
 async function _updateRegistryJSONinDB(existingRegistryPKGVersion, existingRegistryDocumentId, registryPKGJSON,
     issueMessages) {
+    await _validateExtensionNameForRepo(registryPKGJSON.metadata.name, registryPKGJSON.ownerRepo, issueMessages);
     let status;
     registryPKGJSON.syncPending = 'Y';// coco db doesnt support boolean queries yet
     registryPKGJSON.EXTENSION_ID = registryPKGJSON.metadata.name;
@@ -388,6 +432,7 @@ async function _updateRegistryJSONinDB(existingRegistryPKGVersion, existingRegis
             ` while this release was being published?\n If so you may have to update your version number and make a new release with higher version number.`;
         issueMessages.push(message);
         throw {status: HTTP_STATUS_CODES.CONFLICT,
+            updatePublishErrors: true,
             error: message};
     }
 }
@@ -408,6 +453,7 @@ export async function publishGithubRelease(request, reply) {
         if(newGithubReleaseDetails.draft || newGithubReleaseDetails.prerelease){
             issueMessages.push(`Draft or PreRelease builds cannot be published.`);
             throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+                updatePublishErrors: true,
                 error: `Draft or PreRelease builds cannot be published.`};
         }
         const extensionZipAsset = _validateGitHubReleaseAssets(newGithubReleaseDetails, issueMessages);
