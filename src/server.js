@@ -120,7 +120,6 @@ server.get('/setupStack', getSetupStackSchema(), async function (request, reply)
     return await setupStackForStage(request, reply);
 });
 
-addUnAuthenticatedAPI('/changeOwnership'); // todo remove
 server.get('/changeOwnership', getChangeOwnershipSchema(), function (request, reply) {
     return changeOwnership(request, reply);
 });
