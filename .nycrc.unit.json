@@ -16,6 +16,7 @@
     "**/*.spec.js",
     "src/index.js",
     "src/server.js",
+    "src/api/changeOwnership.js",
     "src/www/bootstrap/*",
     "src/www/publish/*"
   ],

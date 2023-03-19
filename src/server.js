@@ -32,6 +32,7 @@ import { fileURLToPath } from 'url';
 import {initGitHubClient, setupGitHubOpsMonitoring} from "./github.js";
 import {getGetGithubReleaseStatusSchema, getGithubReleaseStatus} from "./api/getGithubReleaseStatus.js";
 import {getCountDownloadSchema, countDownload} from "./api/countDownload.js";
+import {getChangeOwnershipSchema, changeOwnership} from  "./api/changeOwnership.js";
 import {startCollectStarsWorker} from "./utils/sync.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -110,6 +111,7 @@ server.get('/helloAuth', getHelloSchema(), function (request, reply) {
     return hello(request, reply);
 });
 
+// private internal apis
 server.get('/backupRegistry', getBackupRegistrySchema(), async function (request, reply) {
     return await backupRegistry(request, reply);
 });
@@ -117,6 +119,12 @@ server.get('/backupRegistry', getBackupRegistrySchema(), async function (request
 server.get('/setupStack', getSetupStackSchema(), async function (request, reply) {
     return await setupStackForStage(request, reply);
 });
+
+addUnAuthenticatedAPI('/changeOwnership'); // todo remove
+server.get('/changeOwnership', getChangeOwnershipSchema(), function (request, reply) {
+    return changeOwnership(request, reply);
+});
+
 
 /**
  * It starts the server and listens on the port specified in the configs
