@@ -202,7 +202,7 @@ async function _validateExtensionPackageJson(githubReleaseTag, packageJSON, repo
             error};
     }
     if(!valid(packageJSON.version)) {
-        let errorMsg = `Invalid package version "${packageJSON.version}" in zip.`;
+        let errorMsg = `Invalid package version "${packageJSON.version}" in zip. <br/>Package versions should be of the form 'x.y.z'. Eg: "0.1.2"`;
         error = error + `\n${errorMsg}`;
         issueMessages.push(errorMsg);
     }
