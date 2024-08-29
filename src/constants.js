@@ -25,3 +25,7 @@ export const FIELD_EXTENSION_ID = "EXTENSION_ID",
 export const BASE_URL = getConfigs().baseURL;
 export const EXTENSION_DOWNLOAD_DIR = process.cwd() + "/downloads";
 export const PROCESSING_TIMEOUT_MS = 60000; // you can retry publish after a minute in processing status
+
+console.log("Using stage", stage);
+console.log("Using Tables", EXTENSIONS_DETAILS_TABLE, RELEASE_DETAILS_TABLE);
+console.log("Using S3 bucket", EXTENSIONS_BUCKET);

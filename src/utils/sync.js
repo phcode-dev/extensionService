@@ -70,7 +70,7 @@ async function _getExtensionInfoFromDB(extensionId) {
     queryObj[FIELD_EXTENSION_ID] = extensionId;
     let registryPKGJSON = await db.getFromIndex(EXTENSIONS_DETAILS_TABLE, queryObj);
     if(!registryPKGJSON.isSuccess){
-        console.error("Error getting extensionPKG details from db: " + extensionId);
+        console.error("Error getting extensionPKG details from db: " + extensionId, registryPKGJSON);
         // dont fail, continue with next repo
         return null;
     }

@@ -62,7 +62,7 @@
     "nodemon": "2.0.22"
   },
   "dependencies": {
-    "@aicore/cocodb-ws-client": "^1.0.14",
+    "@aicore/cocodb-ws-client": "^1.0.20",
     "@aicore/libcommonutils": "1.0.20",
     "@aws-sdk/client-s3": "^3.264.0",
     "@aws-sdk/lib-storage": "^3.278.0",

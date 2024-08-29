@@ -34,7 +34,7 @@ function getObject (Bucket, Key) {
     _initClient();
     return new Promise((resolve, reject) => {
         const getObjectCommand = new _s3.GetObjectCommand({ Bucket, Key });
-        console.log(`getting ${Bucket} : ${Key}`);
+        console.log(`S3:getting ${Bucket} : ${Key}`);
         client.send(getObjectCommand)
             .then((response)=>{
                 // Store all of data chunks returned from the response data stream
@@ -61,7 +61,7 @@ function downloadFile(Bucket, Key, targetPath) {
     _initClient();
     return new Promise((resolve, reject) => {
         const getObjectCommand = new _s3.GetObjectCommand({ Bucket, Key });
-        console.log(`downloading file ${Bucket} : ${Key}`);
+        console.log(`S3:downloading file ${Bucket} : ${Key}`);
         client.send(getObjectCommand)
             .then(response=>{
                 const inputStream = response.Body;
@@ -78,7 +78,7 @@ function downloadFile(Bucket, Key, targetPath) {
 // not testing this as no time and is manually tested. If you are touching this code, manual test thoroughly
 async function uploadFile(Bucket, Key, filePathToUpload){
     _initClient();
-    console.log(`uploading file ${Bucket} : ${Key}`);
+    console.log(`s3:uploading file ${Bucket} : ${Key}`);
     const params = {
         Bucket,
         Key,
@@ -100,7 +100,7 @@ function putObject (Bucket, Key, str) {
         const putObjectCommand = new _s3.PutObjectCommand({ Bucket, Key,
             Body: str
         });
-        console.log(`putting ${Bucket} : ${Key}`);
+        console.log(`s3:putting ${Bucket} : ${Key}`);
         client.send(putObjectCommand)
             .then(resolve)
             .catch(reject);
