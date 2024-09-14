@@ -192,6 +192,39 @@ export async function _syncPopularityEvery15Minutes() { // exported for unit tes
     await S3.putObject(EXTENSIONS_BUCKET, POPULARITY_FILE, JSON.stringify(popularity));
 }
 
+// // to delete an extension, uncomment this function and add
+// // removeExtension("extension-id-to-delete") to the end of fn startCollectStarsWorker
+// export async function removeExtension(extensionIDToDelete) {
+//     console.log("getting registry file from S3");
+//     let registry = JSON.parse(await S3.getObject(EXTENSIONS_BUCKET, REGISTRY_FILE));
+//     if(!registry[extensionIDToDelete]) {
+//         console.error("No such extension in registry to delete", extensionIDToDelete);
+//         return;
+//     }
+//     console.log("Deleting extension from registry:", JSON.stringify(registry[extensionIDToDelete], null, 4));
+//     delete registry[extensionIDToDelete];
+//
+//     let popularity = JSON.parse(await S3.getObject(EXTENSIONS_BUCKET, POPULARITY_FILE));
+//     console.log("Deleting extension from popularity:", JSON.stringify(popularity[extensionIDToDelete], null, 4));
+//     if(!popularity[extensionIDToDelete]) {
+//         console.error("No such extension in popularity to delete", extensionIDToDelete);
+//         return;
+//     }
+//     delete popularity[extensionIDToDelete];
+//
+//     // now update all jsons in registry
+//     console.log("Writing main registry file after extension removal: ", REGISTRY_FILE);
+//     await S3.putObject(EXTENSIONS_BUCKET, REGISTRY_FILE, JSON.stringify(registry));
+//     let registryVersion = JSON.parse(await S3.getObject(EXTENSIONS_BUCKET, REGISTRY_VERSION_FILE));
+//     registryVersion.version = registryVersion.version + 1;
+//     console.log("Writing registry version after extension removal file version: ", registryVersion.version,
+//         REGISTRY_VERSION_FILE);
+//     await S3.putObject(EXTENSIONS_BUCKET, REGISTRY_VERSION_FILE, JSON.stringify(registryVersion));
+//     console.log("Writing registry popularity after extension removal file: ", POPULARITY_FILE);
+//     await S3.putObject(EXTENSIONS_BUCKET, POPULARITY_FILE, JSON.stringify(popularity));
+//     console.log("Extension successfully deleted with ID", extensionIDToDelete);
+// }
+
 /* c8 ignore start */
 // not testing this as no time and is manually tested. If you are touching this code, manual test thoroughly
 let worker;
