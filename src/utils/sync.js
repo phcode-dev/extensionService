@@ -10,6 +10,37 @@ import db from "../db.js";
 import {S3} from "../s3.js";
 import {getRepoDetails} from "../github.js";
 
+function _trimSize(value) {
+    // we dont want huge metadata in the registry
+    if (value.metadata['package-i18n']) {
+        delete value.metadata['package-i18n'];
+    }
+
+    // Trim title and description to less than 1k characters
+    if (typeof value.metadata.title === 'string') {
+        value.metadata.title = value.metadata.title.slice(0, 64);
+    }
+    if (typeof value.metadata.description === 'string') {
+        value.metadata.description = value.metadata.description.slice(0, 256);
+    }
+
+    // Limit each keyword string to max 256 characters
+    if (Array.isArray(value.metadata.keywords)) {
+        value.metadata.keywords = value.metadata.keywords.map(keyword =>
+            typeof keyword === 'string' ? keyword.slice(0, 48) : keyword
+        );
+    }
+
+    // Handle metadata.author field
+    if (value.metadata.author) {
+        if (typeof value.metadata.author === 'string') {
+            value.metadata.author = value.metadata.author.slice(0, 256);
+        } else if (typeof value.metadata.author.name === 'string') {
+            value.metadata.author.name = value.metadata.author.name.slice(0, 256);
+        }
+    }
+}
+
 export async function syncRegistryDBToS3JSON() {
     console.log("syncing non synced extension data in db to s3 extension.json");
     let pending = await db.query(EXTENSIONS_DETAILS_TABLE, "$.syncPending='Y'");
@@ -29,6 +60,7 @@ export async function syncRegistryDBToS3JSON() {
         let newDoc = structuredClone(document);
         delete newDoc.documentId;
         delete newDoc.syncPending;
+        _trimSize(newDoc);
         console.log("Updating Registry entry with[existing, new]: ", registry[newDoc.metadata.name], newDoc);
         registry[newDoc.metadata.name] = newDoc;
         popularity[newDoc.metadata.name]= {
