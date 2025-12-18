@@ -7,7 +7,7 @@ import {
 } from "../constants.js";
 import db from "../db.js";
 import {HTTP_STATUS_CODES} from "@aicore/libcommonutils";
-import {syncRegistryDBToS3JSON} from "../utils/sync.js";
+import {syncRegistryDBToS3JSON, trimAllStrings} from "../utils/sync.js";
 import {S3} from "../s3.js";
 import {createIssue} from "../github.js";
 
@@ -74,6 +74,7 @@ async function _updateRegistryJSONinDB(registryPKGJSON) {
     // we need to update existing extension release only if no one updated the release while this change
     // was being published, so the conditional update with version check.
     console.log("updating extension", registryPKGJSON.EXTENSION_ID);
+    registryPKGJSON = trimAllStrings(registryPKGJSON, 2048);
     status = await db.update(EXTENSIONS_DETAILS_TABLE, existingRegistryDocumentId,
         registryPKGJSON, `$.metadata.version='${registryPKGJSON.metadata.version}'`);
     if(!status.isSuccess) {

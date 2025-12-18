@@ -10,35 +10,130 @@ import db from "../db.js";
 import {S3} from "../s3.js";
 import {getRepoDetails} from "../github.js";
 
-function _trimSize(value) {
-    // we dont want huge metadata in the registry
-    if (value.metadata['package-i18n']) {
-        delete value.metadata['package-i18n'];
+/**
+ * trims ALL string values (including top-level strings)
+ * to at most `trimLength` characters.
+ *
+ * Input can be: string | array | object
+ * Output type always matches input type.
+ */
+function _trimAllStringsInPlace(input, trimLength) {
+    if (typeof trimLength !== "number" || !Number.isFinite(trimLength) || trimLength < 0) {
+        throw new Error("trimLength must be a finite non-negative number");
+    }
+    if(!input){
+        return input;
     }
 
-    // Trim title and description to less than 1k characters
-    if (typeof value.metadata.title === 'string') {
-        value.metadata.title = value.metadata.title.slice(0, 64);
-    }
-    if (typeof value.metadata.description === 'string') {
-        value.metadata.description = value.metadata.description.slice(0, 256);
-    }
-
-    // Limit each keyword string to max 256 characters
-    if (Array.isArray(value.metadata.keywords)) {
-        value.metadata.keywords = value.metadata.keywords.map(keyword =>
-            typeof keyword === 'string' ? keyword.slice(0, 48) : keyword
-        );
+    // Fast path for top-level string
+    if (typeof input === "string") {
+        return input.length > trimLength
+            ? input.slice(0, trimLength)
+            : input;
     }
 
-    // Handle metadata.author field
-    if (value.metadata.author) {
-        if (typeof value.metadata.author === 'string') {
-            value.metadata.author = value.metadata.author.slice(0, 256);
-        } else if (typeof value.metadata.author.name === 'string') {
-            value.metadata.author.name = value.metadata.author.name.slice(0, 256);
+    function trimInPlace(node) {
+        if (node === null || node === undefined) {
+            return;
+        }
+
+        // Array (can be mixed)
+        if (Array.isArray(node)) {
+            for (let i = 0; i < node.length; i++) {
+                const v = node[i];
+                if (typeof v === "string") {
+                    if (v.length > trimLength) {
+                        node[i] = v.slice(0, trimLength);
+                    }
+                } else {
+                    trimInPlace(v);
+                }
+            }
+            return;
+        }
+
+        // Object
+        if (typeof node === "object") {
+            for (const key of Object.keys(node)) {
+                const v = node[key];
+                if (typeof v === "string") {
+                    if (v.length > trimLength) {
+                        node[key] = v.slice(0, trimLength);
+                    }
+                } else {
+                    trimInPlace(v);
+                }
+            }
         }
     }
+
+    trimInPlace(input);
+}
+
+export function trimAllStrings(input, trimLength) {
+    if (typeof trimLength !== "number" || !Number.isFinite(trimLength) || trimLength < 0) {
+        throw new Error("trimLength must be a finite non-negative number");
+    }
+    if(!input){
+        return input;
+    }
+    const clone = JSON.parse(JSON.stringify(input));
+    _trimAllStringsInPlace(clone, trimLength);
+    return clone;
+}
+
+const LONG_DESCRIPTION_256 = 256;
+const TITLE_64 = 64;
+const SHORT_KEY_48 = 48;
+const LONG_AUTHOR_128 = 128;
+// todo we should further enforce this check by trimming out the stored vale in db.rn the user can
+//  bomb us with large metadata.
+function _trimRegistryEntry(registryEntry) {
+
+    // we dont want huge metadata in the registry
+    if (registryEntry.metadata['package-i18n']) {
+        delete registryEntry.metadata['package-i18n'];
+    }
+    registryEntry = trimAllStrings(registryEntry, 1024);
+
+    // Trim title and description to less than 1k characters
+    if (registryEntry.metadata.title) {
+        registryEntry.metadata.title = trimAllStrings(registryEntry.metadata.title, TITLE_64);
+    }
+    if (registryEntry.metadata.description) {
+        registryEntry.metadata.description = trimAllStrings(registryEntry.metadata.description, LONG_DESCRIPTION_256);
+    }
+
+    if (registryEntry.metadata.author) {
+        registryEntry.metadata.author = trimAllStrings(registryEntry.metadata.author, LONG_AUTHOR_128);
+        if (registryEntry.metadata.author.name) {
+            registryEntry.metadata.author.name = trimAllStrings(registryEntry.metadata.author.name, TITLE_64);
+        }
+    }
+    if (registryEntry.metadata.contributors) {
+        registryEntry.metadata.contributors = trimAllStrings(registryEntry.metadata.contributors, LONG_AUTHOR_128);
+    }
+
+    if (registryEntry.metadata.keywords) {
+        registryEntry.metadata.keywords = trimAllStrings(registryEntry.metadata.keywords, SHORT_KEY_48);
+    }
+    if (registryEntry.metadata.categories) {
+        registryEntry.metadata.categories = trimAllStrings(registryEntry.metadata.categories, SHORT_KEY_48);
+    }
+    if (registryEntry.metadata.i18n) {
+        registryEntry.metadata.i18n = trimAllStrings(registryEntry.metadata.i18n, SHORT_KEY_48);
+    }
+
+    return registryEntry;
+}
+
+function _trimFullRegistry(registry) {
+    const clone = JSON.parse(JSON.stringify(registry));
+    let extensionIDs = Object.keys(clone);
+    for(let extensionId of extensionIDs) {
+        clone[extensionId] = _trimRegistryEntry(clone[extensionId]);
+    }
+    return clone;
 }
 
 export async function syncRegistryDBToS3JSON() {
@@ -60,7 +155,7 @@ export async function syncRegistryDBToS3JSON() {
         let newDoc = structuredClone(document);
         delete newDoc.documentId;
         delete newDoc.syncPending;
-        _trimSize(newDoc);
+        newDoc = _trimRegistryEntry(newDoc);
         console.log("Updating Registry entry with[existing, new]: ", registry[newDoc.metadata.name], newDoc);
         registry[newDoc.metadata.name] = newDoc;
         popularity[newDoc.metadata.name]= {
@@ -70,7 +165,7 @@ export async function syncRegistryDBToS3JSON() {
     }
     // now update all jsons in registry
     console.log("Writing main registry file: ", REGISTRY_FILE);
-    await S3.putObject(EXTENSIONS_BUCKET, REGISTRY_FILE, JSON.stringify(registry));
+    await S3.putObject(EXTENSIONS_BUCKET, REGISTRY_FILE, JSON.stringify(_trimFullRegistry(registry)));
     let registryVersion = JSON.parse(await S3.getObject(EXTENSIONS_BUCKET, REGISTRY_VERSION_FILE));
     registryVersion.version = registryVersion.version + 1;
     console.log("Writing registry version file version: ", registryVersion.version, REGISTRY_VERSION_FILE);
@@ -86,6 +181,8 @@ export async function syncRegistryDBToS3JSON() {
         delete document.documentId;
         delete document.syncPending;
         console.log("Setting syncPending for: ", document.metadata.name, documentID);
+        // we dont want huge jsons in the registry
+        document = trimAllStrings(document, 2048);
         // conditional update to make sure than no new release happened while we were updating this release
         updatePromises.push(db.update(EXTENSIONS_DETAILS_TABLE, documentID, document,
             `$.metadata.version='${document.metadata.version}'`));
@@ -122,6 +219,8 @@ async function _updateStargazerCount(owner, repo, extensionId) {
         }
         const documentId = document.documentId;
         document.gihubStars = repoDetails.stargazers_count;
+        // we dont want huge jsons in the registry
+        document = trimAllStrings(document, 2048);
         let status = await db.update(EXTENSIONS_DETAILS_TABLE, documentId, document,
             `$.metadata.version='${document.metadata.version}'`);
         if(!status.isSuccess) {
@@ -194,6 +293,7 @@ export async function _syncPopularityEvery15Minutes() { // exported for unit tes
             continue;
         }
         if(document){
+            document = _trimRegistryEntry(document);
             popularity[document.metadata.name] = popularity[document.metadata.name] || {};
         }
         if(document && document.gihubStars &&
@@ -218,7 +318,7 @@ export async function _syncPopularityEvery15Minutes() { // exported for unit tes
     }
     // now update all jsons in registry
     console.log("_syncPopularityEvery15Minutes: Writing main registry file: ", REGISTRY_FILE);
-    await S3.putObject(EXTENSIONS_BUCKET, REGISTRY_FILE, JSON.stringify(registry));
+    await S3.putObject(EXTENSIONS_BUCKET, REGISTRY_FILE, JSON.stringify(_trimFullRegistry(registry)));
     // we dont increment registry version in this flow as this is just a popularity update
     console.log("_syncPopularityEvery15Minutes: Writing registry popularity file: ", POPULARITY_FILE);
     await S3.putObject(EXTENSIONS_BUCKET, POPULARITY_FILE, JSON.stringify(popularity));
@@ -246,7 +346,7 @@ export async function _syncPopularityEvery15Minutes() { // exported for unit tes
 //
 //     // now update all jsons in registry
 //     console.log("Writing main registry file after extension removal: ", REGISTRY_FILE);
-//     await S3.putObject(EXTENSIONS_BUCKET, REGISTRY_FILE, JSON.stringify(registry));
+//     await S3.putObject(EXTENSIONS_BUCKET, REGISTRY_FILE, JSON.stringify(_trimFullRegistry(registry)));
 //     let registryVersion = JSON.parse(await S3.getObject(EXTENSIONS_BUCKET, REGISTRY_VERSION_FILE));
 //     registryVersion.version = registryVersion.version + 1;
 //     console.log("Writing registry version after extension removal file version: ", registryVersion.version,

@@ -19,7 +19,7 @@ import {
 } from "../constants.js";
 import fs from "fs";
 import {S3} from "../s3.js";
-import {syncRegistryDBToS3JSON} from "../utils/sync.js";
+import {syncRegistryDBToS3JSON, trimAllStrings} from "../utils/sync.js";
 
 const RELEASE_STATUS_PROCESSING = "processing",
     RELEASE_STATUS_FAILED = "failed",
@@ -415,6 +415,8 @@ async function _updateRegistryJSONinDB(existingRegistryPKGVersion, existingRegis
     let status;
     registryPKGJSON.syncPending = 'Y';// coco db doesnt support boolean queries yet
     registryPKGJSON.EXTENSION_ID = registryPKGJSON.metadata.name;
+    // we dont want huge jsons in the registry
+    registryPKGJSON = trimAllStrings(registryPKGJSON, 2048);
     if(existingRegistryDocumentId){
         // we need to update existing extension release only if no one updated the release while this release
         // was being published, so the conditional update with version check.
@@ -459,22 +461,31 @@ export async function publishGithubRelease(request, reply) {
         const extensionZipAsset = _validateGitHubReleaseAssets(newGithubReleaseDetails, issueMessages);
         const {extensionZipPath, existingRegistryPKGVersion, existingRegistryDocumentId, registryPKGJSON}=
             await _downloadAndValidateExtensionZip(githubReleaseTag, extensionZipAsset, repoDetails, issueMessages);
+        const registryPKGJSONTrimmed = trimAllStrings(registryPKGJSON, 2048);
+        const packageSize = registryPKGJSONTrimmed ? JSON.stringify(registryPKGJSONTrimmed).length : 0;
+        if(packageSize > 10000){ // we dont accept large metadata
+            issueMessages.push(`package.json metadata size too large.`);
+            throw {status: HTTP_STATUS_CODES.BAD_REQUEST,
+                updatePublishErrors: true,
+                error: `package.json metadata size too large! Should be less than 9KB but was ${
+                    Math.round(packageSize/1024)}KB`};
+        }
         _extensionZipPath = extensionZipPath;
         // we should also in the future do a virus scan, but will rely on av in users machine for the time being
         // https://developers.virustotal.com/reference/files-scan by Google Cloud is available for non-commercial apps.
 
         await S3.uploadFile(EXTENSIONS_BUCKET,
-            `extensions/${registryPKGJSON.metadata.name}-${registryPKGJSON.metadata.version}.zip`,
+            `extensions/${registryPKGJSONTrimmed.metadata.name}-${registryPKGJSONTrimmed.metadata.version}.zip`,
             _extensionZipPath);
         fs.unlink(_extensionZipPath, console.error); // cleanup downloads. (But we don't check the result)
 
         // publish new package json to registry db
-        await _updateRegistryJSONinDB(existingRegistryPKGVersion, existingRegistryDocumentId, registryPKGJSON,
+        await _updateRegistryJSONinDB(existingRegistryPKGVersion, existingRegistryDocumentId, registryPKGJSONTrimmed,
             issueMessages);
 
         await syncRegistryDBToS3JSON();
 
-        await _UpdateReleaseSuccess(githubReleaseTag, existingReleaseInfo, registryPKGJSON);
+        await _UpdateReleaseSuccess(githubReleaseTag, existingReleaseInfo, registryPKGJSONTrimmed);
 
         const response = {
             message: "done"
