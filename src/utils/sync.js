@@ -317,10 +317,13 @@ export async function _syncPopularityEvery15Minutes() { // exported for unit tes
         return;
     }
     // now update all jsons in registry
-    console.log("_syncPopularityEvery15Minutes: Writing main registry file: ", REGISTRY_FILE);
-    await S3.putObject(EXTENSIONS_BUCKET, REGISTRY_FILE, JSON.stringify(_trimFullRegistry(registry)));
+    const registryToWrite = JSON.stringify(_trimFullRegistry(registry));
+    console.log("_syncPopularityEvery15Minutes: Writing main registry file: ", REGISTRY_FILE, "size:",
+        `${Math.round(registryToWrite.length/1024)}KB`);
+    await S3.putObject(EXTENSIONS_BUCKET, REGISTRY_FILE, registryToWrite);
     // we dont increment registry version in this flow as this is just a popularity update
-    console.log("_syncPopularityEvery15Minutes: Writing registry popularity file: ", POPULARITY_FILE);
+    console.log("_syncPopularityEvery15Minutes: Writing registry popularity file: ", POPULARITY_FILE, "size:",
+        `${Math.round(popularity.length/1024)}KB`);
     await S3.putObject(EXTENSIONS_BUCKET, POPULARITY_FILE, JSON.stringify(popularity));
 }
 
