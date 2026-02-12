@@ -49,8 +49,8 @@
   },
   "homepage": "https://github.com/phcode-dev/extensionService",
   "devDependencies": {
-    "@commitlint/cli": "17.8.1",
-    "@commitlint/config-conventional": "17.8.1",
+    "@commitlint/cli": "20.4.1",
+    "@commitlint/config-conventional": "20.4.1",
     "c8": "7.14.0",
     "chai": "4.4.1",
     "cli-color": "2.0.4",
