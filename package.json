@@ -67,7 +67,7 @@
     "@aws-sdk/client-s3": "^3.264.0",
     "@aws-sdk/lib-storage": "^3.278.0",
     "@fastify/static": "^6.9.0",
-    "@octokit/rest": "^19.0.7",
+    "@octokit/rest": "^22.0.0",
     "fastify": "4.26.2",
     "follow-redirects": "^1.15.2",
     "node-fetch": "^3.3.0",
